@@ -30,11 +30,9 @@ namespace VVVV.DX11.Nodes
 		[ImportingConstructor()]
         public DX11RendererNode(IPluginHost host, IIOFactory iofactory,IHDEHost hdehost)
         {
-            
             InitializeComponent();
 			this.FHost = host;
             this.hde = hdehost;
-            this.BackColor = System.Drawing.Color.Black;
 
             //this.hde.BeforeComponentModeChange += new ComponentModeEventHandler(hde_BeforeComponentModeChange);
             
@@ -45,7 +43,7 @@ namespace VVVV.DX11.Nodes
             this.MouseLeave += new EventHandler(DX11RendererNode_MouseLeave);
             this.LostFocus += new EventHandler(DX11RendererNode_LostFocus);
             this.MouseWheel += new System.Windows.Forms.MouseEventHandler(DX11RendererNode_MouseWheel);
-            
+            this.BackColor = Color.Black;
             Touchdown += OnTouchDownHandler;
             Touchup += OnTouchUpHandler;
             TouchMove += OnTouchMoveHandler;

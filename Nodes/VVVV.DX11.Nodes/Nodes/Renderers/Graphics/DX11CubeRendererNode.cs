@@ -68,10 +68,7 @@ namespace VVVV.DX11.Nodes
         [Output("Texture Out", Order = 2, IsSingle = true)]
         protected ISpread<DX11Resource<DX11CubeRenderTarget>> FOutCubeTexture;
 
-        [Output("Texture Slices Out", Order = 3)]
-        protected ISpread<DX11Resource<DX11Texture2D>> FOutSliceTextures;
-
-        [Output("Depth Out", Order = 4, IsSingle = true)]
+        [Output("Depth Out", Order = 2, IsSingle = true)]
         protected ISpread<DX11Resource<DX11CubeDepthStencil>> FOutCubeDepthTexture;
 
         public event DX11QueryableDelegate BeginQuery;
@@ -125,16 +122,8 @@ namespace VVVV.DX11.Nodes
             this.rendereddevices.Clear();
             this.updateddevices.Clear();
 
-            if (this.FOutCubeTexture[0] == null)
-            {
-                this.FOutCubeTexture[0] = new DX11Resource<DX11CubeRenderTarget>();
-                this.FOutCubeDepthTexture[0] = new DX11Resource<DX11CubeDepthStencil>();
-                this.FOutSliceTextures.SliceCount = 6;
-                for (int i = 0; i < 6; i++)
-                {
-                    this.FOutSliceTextures[i] = new DX11Resource<DX11Texture2D>();
-                }
-            }
+            if (this.FOutCubeTexture[0] == null) { this.FOutCubeTexture[0] = new DX11Resource<DX11CubeRenderTarget>(); }
+            if (this.FOutCubeDepthTexture[0] == null) { this.FOutCubeDepthTexture[0] = new DX11Resource<DX11CubeDepthStencil>(); }
 
             if (this.FInFormat.IsChanged
                 || this.FInSize.IsChanged)
@@ -155,13 +144,8 @@ namespace VVVV.DX11.Nodes
 
             if (!this.FOutCubeTexture[0].Contains(context))
             {
-                var cube = new DX11CubeRenderTarget(context, this.FInSize[0], this.sd, DeviceFormatHelper.GetFormat(this.FInFormat[0].Name), false, 1);
-                this.FOutCubeTexture[0][context] = cube; 
+                this.FOutCubeTexture[0][context] = new DX11CubeRenderTarget(context, this.FInSize[0], this.sd, DeviceFormatHelper.GetFormat(this.FInFormat[0].Name), false, 1);
                 this.FOutCubeDepthTexture[0][context] = new DX11CubeDepthStencil(context, this.FInSize[0], this.sd, Format.D24_UNorm_S8_UInt);
-                for (int i = 0; i < 6; i++)
-                {
-                    this.FOutSliceTextures[i][context] = DX11Texture2D.FromTextureAndSRV(context, cube.Resource, cube.SliceRTV[i].SRV);
-                }
             }
 
             this.updateddevices.Add(context);
