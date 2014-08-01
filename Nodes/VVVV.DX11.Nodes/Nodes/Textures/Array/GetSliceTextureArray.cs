@@ -39,8 +39,8 @@ namespace VVVV.DX11.Nodes
         int ArrayCount = 1;
         int numSlicesOut;
 
-        [Import()]
-        public ILogger logger;
+        //[Import()]
+        //public ILogger logger;
 
         public void Evaluate(int SpreadMax)
         {
