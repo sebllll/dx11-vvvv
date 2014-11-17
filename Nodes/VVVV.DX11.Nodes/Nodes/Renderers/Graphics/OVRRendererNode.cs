@@ -53,12 +53,7 @@ namespace VVVV.DX11.Nodes
         }
 
         #region Evaluate
-        public override void Evaluate(int SpreadMax)
-        {
-            base.Evaluate(SpreadMax);
 
-            
-        }
         #endregion
 
         public override void Render(DX11RenderContext context)
