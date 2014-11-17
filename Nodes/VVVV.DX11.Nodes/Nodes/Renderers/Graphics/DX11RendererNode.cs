@@ -220,6 +220,9 @@ namespace VVVV.DX11.Nodes
         #endregion
 
         #region Output Pins
+        [Output("Device Handle", AllowFeedback = true)]
+        protected ISpread<int> FOutDeviceHandle;
+
         [Output("Mouse State",AllowFeedback=true)]
         protected ISpread<MouseState> FOutMouseState;
 
@@ -262,12 +265,13 @@ namespace VVVV.DX11.Nodes
         private List<Keys> FKeys = new List<Keys>();
         private int wheel = 0;
 
-        private Dictionary<DX11RenderContext, DX11GraphicsRenderer> renderers = new Dictionary<DX11RenderContext, DX11GraphicsRenderer>();
-        private List<DX11RenderContext> updateddevices = new List<DX11RenderContext>();
-        private List<DX11RenderContext> rendereddevices = new List<DX11RenderContext>();
-        private DepthBufferManager depthmanager;
+        public Dictionary<DX11RenderContext, DX11GraphicsRenderer> renderers = new Dictionary<DX11RenderContext, DX11GraphicsRenderer>();
+        public List<DX11RenderContext> updateddevices = new List<DX11RenderContext>();
+        public List<DX11RenderContext> rendereddevices = new List<DX11RenderContext>();
+        public DepthBufferManager depthmanager;
 
-        private DX11RenderSettings settings = new DX11RenderSettings();
+        public DX11SwapChain chain;
+        public DX11RenderSettings settings = new DX11RenderSettings();
 
         private bool FInvalidateSwapChain;
         private bool FResized = false;
@@ -275,7 +279,7 @@ namespace VVVV.DX11.Nodes
         #endregion
 
         #region Evaluate
-        public void Evaluate(int SpreadMax)
+        public virtual void Evaluate(int SpreadMax)
         {
             this.FOutCtrl[0] = this;
             this.FOutRef[0] = (INode)this.FHost;
@@ -370,6 +374,9 @@ namespace VVVV.DX11.Nodes
                     tcnt++;
                 }
             }
+
+            this.FOutDeviceHandle.SliceCount = 1;
+            this.FOutDeviceHandle[0] = this.WindowHandle.ToInt32();
         }
         #endregion
 
@@ -388,7 +395,7 @@ namespace VVVV.DX11.Nodes
         #endregion
 
         #region Render
-        public void Render(DX11RenderContext context)
+        public virtual void Render(DX11RenderContext context)
         {
             Device device = context.Device;
             
@@ -406,7 +413,7 @@ namespace VVVV.DX11.Nodes
                     this.BeginQuery(context);
                 }
 
-                DX11SwapChain chain = this.FOutBackBuffer[0][context];
+                this.chain = this.FOutBackBuffer[0][context];
                 DX11GraphicsRenderer renderer = this.renderers[context];
 
                 renderer.EnableDepth = this.FInDepthBuffer[0];
@@ -472,7 +479,7 @@ namespace VVVV.DX11.Nodes
         }
         #endregion
 
-        private void RenderSlice(DX11RenderContext context,DX11RenderSettings settings, int i, bool viewportpop)
+        public void RenderSlice(DX11RenderContext context,DX11RenderSettings settings, int i, bool viewportpop)
         {
             float cw = (float)this.ClientSize.Width;
             float ch = (float)this.ClientSize.Height;
