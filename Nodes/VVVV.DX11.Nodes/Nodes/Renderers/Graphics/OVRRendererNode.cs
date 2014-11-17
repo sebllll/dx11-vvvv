@@ -13,13 +13,13 @@ using VVVV.Utils.VMath;
 
 namespace VVVV.DX11.Nodes
 {
-    [PluginInfo(Name="Renderer",Category="DX11", Version = "OVR" ,Author="vux, tonfilm, sebl", AutoEvaluate=true,
+    [PluginInfo(Name = "Renderer", Category = "DX11", Version = "OVR", Author = "vux, tonfilm, sebl", AutoEvaluate = true,
         InitialWindowHeight = 731, InitialWindowWidth = 1182, InitialBoxWidth = 1182, InitialBoxHeight = 731, InitialComponentMode = TComponentMode.InAWindow)]
     public class OVRRendererNode : DX11RendererNode
     {
-      
+
         #region Input Pins
-        
+
         #endregion
 
         #region Output Pins
@@ -38,7 +38,6 @@ namespace VVVV.DX11.Nodes
         private bool isInit = false;
         private uint frameIndex = 0;
 
-        Texture2D[] eyetextures = new Texture2D[2];
         List<EyeRenderDesc> eyeList = new List<EyeRenderDesc>();
 
         private Sizei renderTargetSize;
@@ -50,37 +49,119 @@ namespace VVVV.DX11.Nodes
         public OVRRendererNode(IPluginHost host, IIOFactory iofactory, IHDEHost hdehost)
             : base(host, iofactory, hdehost)
         {
-            
+
         }
 
         #region Evaluate
-        //public override void Evaluate(int SpreadMax)
-        //{
-        //    base.Evaluate(SpreadMax);
+        public override void Evaluate(int SpreadMax)
+        {
+            base.Evaluate(SpreadMax);
 
             
-        //}
+        }
         #endregion
 
         public override void Render(DX11RenderContext context)
         {
-            Exception exception = null;
-
-            //base.Render(context);
-            chain = this.FOutBackBuffer[0][context];
-
-            if (!this.updateddevices.Contains(context)) 
+            
+            if (!this.updateddevices.Contains(context))
             {
-                base.Update(null, context);
+                this.Update(null, context);
 
+                //shutdownOVR();
+                //this.InitOVR(context);
+            }
+
+            if (!isInit)
+            {
                 shutdownOVR();
-                this.InitOVR(context); 
-
+                this.InitOVR(context);
             }
 
             if (this.rendereddevices.Contains(context)) { return; }
 
-            // base Render():            
+            baseRendering(context);
+
+            //OVRRender(context);
+
+
+        }
+
+        private void OVRRender(DX11RenderContext context)
+        {
+            Exception exception = null;
+
+            if (isInit)
+            {
+                try
+                {
+                    FrameTiming timing = hmd.BeginFrame(frameIndex);
+
+                    frameIndex++;
+
+                    List<Posef> poseList = new List<Posef>();
+                    poseList.Add(hmd.GetEyePose(hmdDesc.EyeRenderOrder1));
+                    poseList.Add(hmd.GetEyePose(hmdDesc.EyeRenderOrder2));
+
+                    FPosePos.SliceCount = FPoseOrient.SliceCount = poseList.Count;
+                    for (int i = 0; i < poseList.Count; i++)
+                    {
+                        FPosePos[i] = new Vector3D(poseList[i].Position.x, poseList[i].Position.y, poseList[i].Position.z);
+                        FPoseOrient[i] = new Vector4D(poseList[i].Orientation.x, poseList[i].Orientation.y, poseList[i].Orientation.z, poseList[i].Orientation.w);
+                    }
+
+                    // fill textures
+                    List<D3D11TextureData> textureList = new List<D3D11TextureData>();
+
+                    for (int i = 0; i < 2; i++)
+                    {
+                        D3D11TextureData tex = new D3D11TextureData();
+                        SlimDX.Direct3D11.Viewport viewport;
+
+                        int w = this.FOutBackBuffer[0][context].Resource.Description.Width;
+                        int h = this.FOutBackBuffer[0][context].Resource.Description.Height;
+
+                        tex.Header.API = RenderAPIType.RenderAPI_D3D11;
+                        tex.Header.TextureSize = renderTargetSize;
+                        tex.pTexture = this.FOutBackBuffer[0][context].Resource.ComPointer;
+                        tex.pSRView = this.FOutBackBuffer[0][context].SRV.ComPointer;
+                        textureList.Add(tex);
+
+                        if (i == 0)
+                            viewport = new SlimDX.Direct3D11.Viewport(0, 0, renderTargetSize.w / 2, renderTargetSize.h);
+                        else
+                            viewport = new SlimDX.Direct3D11.Viewport((renderTargetSize.w + 1) / 2, 0, renderTargetSize.w / 2, renderTargetSize.h);
+
+
+                        //context.Rasterizer.SetViewport(viewport);
+                        context.CurrentDeviceContext.Rasterizer.SetViewports(viewport);
+                        tex.Header.RenderViewport.Pos.x = (int)viewport.X;
+                        tex.Header.RenderViewport.Pos.y = (int)viewport.Y;
+                        tex.Header.RenderViewport.Size.w = (int)viewport.Width;
+                        tex.Header.RenderViewport.Size.h = (int)viewport.Height;
+                    }
+
+                    hmd.EndFrame(poseList.ToArray(), textureList.ToArray());  // Exception in here :(
+
+
+                }
+                catch (Exception e)
+                {
+                    exception = e;
+                }
+
+                //Rethrow
+                if (exception != null)
+                {
+                    throw exception;
+                }
+            }
+        }
+
+        private void baseRendering(DX11RenderContext context)
+        {
+            Exception exception = null;
+
             if (this.FInEnabled[0])
             {
 
@@ -126,14 +207,18 @@ namespace VVVV.DX11.Nodes
 
                         for (int i = 0; i < rtmax; i++)
                         {
-                            this.RenderSlice(context, settings, i, viewportpop);
+                            base.RenderSlice(context, settings, i, viewportpop);
                         }
+
+                        // RENDER OVR ---------------------------------------------------------------------
+                        OVRRender(context);
                     }
 
                     //if (this.EndQuery != null)
                     //{
                     //    this.EndQuery(context);
                     //}
+
                 }
                 catch (Exception ex)
                 {
@@ -153,72 +238,6 @@ namespace VVVV.DX11.Nodes
                 throw exception;
             }
 
-            // ---------------- OVR ----------------
-
-            if (isInit)
-            {
-                try
-                {
-                    FrameTiming timing = hmd.BeginFrame(frameIndex);
-
-                    frameIndex++;
-
-                    List<Posef> poseList = new List<Posef>();
-                    poseList.Add(hmd.GetEyePose(hmdDesc.EyeRenderOrder1));
-                    poseList.Add(hmd.GetEyePose(hmdDesc.EyeRenderOrder2));
-
-                    FPosePos.SliceCount = FPoseOrient.SliceCount = poseList.Count;
-                    for (int i = 0; i < poseList.Count; i++)
-                    {
-                        FPosePos[i] = new Vector3D(poseList[i].Position.x, poseList[i].Position.y, poseList[i].Position.z);
-                        FPoseOrient[i] = new Vector4D(poseList[i].Orientation.x, poseList[i].Orientation.y, poseList[i].Orientation.z, poseList[i].Orientation.w);
-                    }
-
-                    // fill textures
-                    List<D3D11TextureData> textureList = new List<D3D11TextureData>();
-
-                    for (int i = 0; i < 2; i++)
-                    {
-                        D3D11TextureData tex = new D3D11TextureData();
-                        SlimDX.Direct3D11.Viewport viewport;
-
-                        tex.Header.API = RenderAPIType.RenderAPI_D3D11;
-                        tex.Header.TextureSize = renderTargetSize;
-                        tex.pTexture = this.FOutBackBuffer[0][context].Resource.ComPointer;
-                        tex.pSRView = this.FOutBackBuffer[0][context].SRV.ComPointer;
-                        textureList.Add(tex);
-
-                        if (i == 0)
-                            viewport = new SlimDX.Direct3D11.Viewport(0, 0, renderTargetSize.w / 2, renderTargetSize.h);
-                        else
-                            viewport = new SlimDX.Direct3D11.Viewport((renderTargetSize.w + 1) / 2, 0, renderTargetSize.w / 2, renderTargetSize.h);
-
-
-                        //context.Rasterizer.SetViewport(viewport);
-                        context.CurrentDeviceContext.Rasterizer.SetViewports(viewport);
-                        tex.Header.RenderViewport.Pos.x = (int)viewport.X;
-                        tex.Header.RenderViewport.Pos.y = (int)viewport.Y;
-                        tex.Header.RenderViewport.Size.w = (int)viewport.Width;
-                        tex.Header.RenderViewport.Size.h = (int)viewport.Height;
-                    }
-
-                    hmd.EndFrame(poseList.ToArray(), textureList.ToArray());  // Exception in here :(
-
-
-                }
-                catch (Exception e)
-                {
-                    exception = e;
-                }
-
-                //Rethrow
-                if (exception != null)
-                {
-                    throw exception;
-                }
-
-            }
-        
         }
 
         private void InitOVR(DX11RenderContext context)
@@ -251,8 +270,9 @@ namespace VVVV.DX11.Nodes
             D3D11ConfigData config = new D3D11ConfigData();
             config.Header.API = RenderAPIType.RenderAPI_D3D11;
             config.Header.Multisample = 1;
-            config.Header.RTSize = renderTargetSize; 
-            config.pDevice = context.Device.ComPointer;
+            config.Header.RTSize = renderTargetSize;
+            config.pDevice = context.CurrentDeviceContext.Device.ComPointer;
+            //config.pDevice = context.Device.ComPointer;
             config.pDeviceContext = context.CurrentDeviceContext.ComPointer;
             config.pSwapChain = this.chain.swapchain.ComPointer;
             config.pBackBufferRT = this.chain.RTV.ComPointer;
