@@ -10,6 +10,7 @@ using VVVV.DX11.Lib.Rendering;
 using VVVV.PluginInterfaces.V1;
 using VVVV.PluginInterfaces.V2;
 using VVVV.Utils.VMath;
+using VVVV.Core.Logging;
 
 namespace VVVV.DX11.Nodes
 {
@@ -19,7 +20,6 @@ namespace VVVV.DX11.Nodes
     {
 
         #region Input Pins
-
         #endregion
 
         #region Output Pins
@@ -31,6 +31,9 @@ namespace VVVV.DX11.Nodes
         #endregion
 
         #region Fields
+        [Import()]
+        public ILogger FLogger;
+
         private static Hmd hmd = null;
         private static OculusSharp.CAPI.HmdDesc hmdDesc;
         private Sizei texSize;
@@ -67,10 +70,15 @@ namespace VVVV.DX11.Nodes
                 //this.InitOVR(context);
             }
 
-            if (!isInit)
+            if (!isInit && FInEnabled[0])
             {
                 shutdownOVR();
                 this.InitOVR(context);
+            }
+
+            if (!FInEnabled[0])
+            {
+                shutdownOVR();
             }
 
             if (this.rendereddevices.Contains(context)) { return; }
@@ -79,11 +87,41 @@ namespace VVVV.DX11.Nodes
 
             //OVRRender(context);
 
-
         }
+
+        /*
+        original swapchainsettings:
+            renderTargetTexture = new Texture2D(device, new Texture2DDescription()
+            {
+                Format = Format.R8G8B8A8_UNorm,
+                ArraySize = 1,
+                MipLevels = 1,
+                Width = renderTargetSize.w,
+                Height = renderTargetSize.h,
+                SampleDescription = new SampleDescription(1, 0),
+                Usage = ResourceUsage.Default,
+                BindFlags = BindFlags.RenderTarget | BindFlags.ShaderResource,
+                CpuAccessFlags = CpuAccessFlags.None,
+                OptionFlags = ResourceOptionFlags.None
+            });
+
+        used here:
+             SwapChainDescription sd = new SwapChainDescription()
+            {
+                BufferCount = 1,
+                ModeDescription = new ModeDescription(0, 0, new Rational(rate, 1), format),
+                IsWindowed = true,
+                OutputHandle = handle,
+                SampleDescription = sampledesc,
+                SwapEffect = SwapEffect.Discard,
+                Usage = Usage.RenderTargetOutput | Usage.ShaderInput,
+                Flags = SwapChainFlags.None
+            };
+        */
 
         private void OVRRender(DX11RenderContext context)
         {
+            FLogger.Log(LogType.Debug, "OVRRender(): ");
             Exception exception = null;
 
             if (isInit)
@@ -115,10 +153,13 @@ namespace VVVV.DX11.Nodes
 
                         int w = this.FOutBackBuffer[0][context].Resource.Description.Width;
                         int h = this.FOutBackBuffer[0][context].Resource.Description.Height;
+                        //FLogger.Log(LogType.Debug, "this.FOutBackBuffer[0][context].Resource.Description.width/height: " + w + " x " + h);
 
                         tex.Header.API = RenderAPIType.RenderAPI_D3D11;
                         tex.Header.TextureSize = renderTargetSize;
                         tex.pTexture = this.FOutBackBuffer[0][context].Resource.ComPointer;
+                        //FLogger.Log(LogType.Debug, "this.FOutBackBuffer[0][context].Resource.ComPointer: " + this.FOutBackBuffer[0][context].Resource.ComPointer);
+
                         tex.pSRView = this.FOutBackBuffer[0][context].SRV.ComPointer;
                         textureList.Add(tex);
 
@@ -134,10 +175,10 @@ namespace VVVV.DX11.Nodes
                         tex.Header.RenderViewport.Pos.y = (int)viewport.Y;
                         tex.Header.RenderViewport.Size.w = (int)viewport.Width;
                         tex.Header.RenderViewport.Size.h = (int)viewport.Height;
+                        FLogger.Log(LogType.Debug, "viewport " + i + " : " + viewport);
                     }
 
                     hmd.EndFrame(poseList.ToArray(), textureList.ToArray());  // Exception in here :(
-
 
                 }
                 catch (Exception e)
@@ -202,11 +243,11 @@ namespace VVVV.DX11.Nodes
 
                         for (int i = 0; i < rtmax; i++)
                         {
-                            base.RenderSlice(context, settings, i, viewportpop);
+                            this.RenderSlice(context, settings, i, viewportpop);
                         }
 
                         // RENDER OVR ---------------------------------------------------------------------
-                        OVRRender(context);
+                        
                     }
 
                     //if (this.EndQuery != null)
@@ -223,10 +264,12 @@ namespace VVVV.DX11.Nodes
                 {
                     renderer.CleanTargets();
                 }
+                
             }
 
             this.rendereddevices.Add(context);
 
+            OVRRender(context);
             //Rethrow
             if (exception != null)
             {
@@ -242,9 +285,14 @@ namespace VVVV.DX11.Nodes
             Hmd.Initialize();
 
             if (Hmd.DetectHmd() > 0)
+            {
                 hmd = new Hmd(0);
+            }
             else
+            {
                 hmd = new Hmd(OculusSharp.CAPI.HmdType.Hmd_DK2);
+                //hmd = new Hmd(OculusSharp.CAPI.HmdType.Hmd_DKHD);
+            }
             hmdDesc = hmd.GetDesc();
 
             hmd.ConfigureTracking(OculusSharp.CAPI.TrackingCap.TrackingCap_Orientation | OculusSharp.CAPI.TrackingCap.TrackingCap_MagYawCorrection | OculusSharp.CAPI.TrackingCap.TrackingCap_Position, 0);
@@ -259,19 +307,48 @@ namespace VVVV.DX11.Nodes
             fovList.Add(hmdDesc.DefaultEyeFov1);
             fovList.Add(hmdDesc.DefaultEyeFov2);
 
+            Sizei rtSize;
+            rtSize.w = this.FOutBackBuffer[0][context].Resource.Description.Width;
+            rtSize.h = this.FOutBackBuffer[0][context].Resource.Description.Height;
+
+            FLogger.Log(LogType.Debug, "texture Size:      " + rtSize.w + " x " + rtSize.h);
+            FLogger.Log(LogType.Debug, "renderTarget Size: " + renderTargetSize.w + " x " + renderTargetSize.h);
 
             this.chain = this.FOutBackBuffer[0][context];
+
+            FLogger.Log(LogType.Debug, " ");
+            FLogger.Log(LogType.Debug, "C O N F I G: ");
 
             D3D11ConfigData config = new D3D11ConfigData();
             config.Header.API = RenderAPIType.RenderAPI_D3D11;
             config.Header.Multisample = 1;
             config.Header.RTSize = renderTargetSize;
-            config.pDevice = context.CurrentDeviceContext.Device.ComPointer;
-            //config.pDevice = context.Device.ComPointer;
+            //config.pDevice = context.CurrentDeviceContext.Device.ComPointer;
+            config.pDevice = context.Device.ComPointer;
+                FLogger.Log(LogType.Debug, "pDevice: ");
+                FLogger.Log(LogType.Debug, "context.CurrentDeviceContext.Device.ComPointer: " + context.CurrentDeviceContext.Device.ComPointer);
+                FLogger.Log(LogType.Debug, "context.Device.ComPointer:                      " + context.Device.ComPointer);
+                FLogger.Log(LogType.Debug, " ");
+        
+            //config.pDeviceContext = context.CurrentDeviceContext.Device.ImmediateContext.ComPointer;
             config.pDeviceContext = context.CurrentDeviceContext.ComPointer;
-            config.pSwapChain = this.chain.swapchain.ComPointer;
-            config.pBackBufferRT = this.chain.RTV.ComPointer;
+                FLogger.Log(LogType.Debug, "pDeviceContext: ");    
+                FLogger.Log(LogType.Debug, "context.CurrentDeviceContext.Device.ImmediateContext.ComPointer: " + context.CurrentDeviceContext.Device.ImmediateContext.ComPointer);
+                FLogger.Log(LogType.Debug, "context.CurrentDeviceContext.ComPointer:                         " + context.CurrentDeviceContext.ComPointer);
+                FLogger.Log(LogType.Debug, " ");
 
+            //config.pSwapChain = this.chain.swapchain.ComPointer;
+            config.pSwapChain = this.FOutBackBuffer[0][context].swapchain.ComPointer;
+                FLogger.Log(LogType.Debug, "pSwapChain: ");
+                FLogger.Log(LogType.Debug, "this.chain.swapchain.ComPointer:                      " + this.chain.swapchain.ComPointer);
+                FLogger.Log(LogType.Debug, "this.FOutBackBuffer[0][context].swapchain.ComPointer: " + this.FOutBackBuffer[0][context].swapchain.ComPointer);
+                FLogger.Log(LogType.Debug, " ");
+
+            //config.pBackBufferRT = this.chain.RTV.ComPointer;
+            config.pBackBufferRT = this.FOutBackBuffer[0][context].RTV.ComPointer;
+            FLogger.Log(LogType.Debug, "pBackBufferRT: ");
+            FLogger.Log(LogType.Debug, "this.chain.RTV.ComPointer:                      " + this.chain.RTV.ComPointer);
+            FLogger.Log(LogType.Debug, "this.FOutBackBuffer[0][context].RTV.ComPointer: " + this.FOutBackBuffer[0][context].RTV.ComPointer);
             // hmd stuff -------------------------------
 
             hmd.ConfigureRendering(config, DistortionCap.DistortionCap_Chromatic | DistortionCap.DistortionCap_TimeWarp | DistortionCap.DistortionCap_Vignette, fovList, eyeList);
