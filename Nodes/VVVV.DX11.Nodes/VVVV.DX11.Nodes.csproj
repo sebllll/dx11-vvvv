@@ -54,6 +54,15 @@
     <Compile Include="Nodes\Renderers\Buffers\DX11BufferRendererAdvanced.cs" />
     <Compile Include="Nodes\Renderers\Buffers\DX11RawBufferRenderer.cs" />
     <Compile Include="Nodes\Renderers\Buffers\DX11StreamOutRendererNode.cs" />
+    <Compile Include="Nodes\Renderers\Graphics\OVRNode.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Nodes\Renderers\Graphics\OVRNode_ctrl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Nodes\Renderers\Graphics\OVRNode_ctrl.Designer.cs">
+      <DependentUpon>OVRNode_ctrl.cs</DependentUpon>
+    </Compile>
     <Compile Include="Nodes\Renderers\Graphics\OVRRendererNode.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -204,6 +213,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Nodes\Renderers\Graphics\OVRNode.resx">
+      <DependentUpon>OVRNode.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Nodes\Renderers\Graphics\OVRRendererNode.resx">
       <DependentUpon>OVRRendererNode.cs</DependentUpon>
     </EmbeddedResource>
