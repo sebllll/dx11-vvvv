@@ -32,6 +32,8 @@ using FeralTic.DX11;
 using FeralTic.DX11.Resources;
 using VVVV.DX11.Nodes.Renderers.Graphics.Touch;
 
+using OculusWrap;
+
 namespace VVVV.DX11.Nodes
 {
     [PluginInfo(Name = "OVR", Category = "DX11", Author = "vux,tonfilm", AutoEvaluate = true,
@@ -226,6 +228,9 @@ namespace VVVV.DX11.Nodes
         #endregion
 
         #region Output Pins
+        [Output("RenderScaleAndOffset")] //2 Vectors, 2 Eyes
+        public ISpread<Vector2D> FRenderScaleAndOffset;
+
         [Output("Device Handle", AllowFeedback = true)]
         protected ISpread<int> FOutDeviceHandle;
 
@@ -282,6 +287,32 @@ namespace VVVV.DX11.Nodes
         private bool FInvalidateSwapChain;
         private bool FResized = false;
         private DX11RenderContext primary;
+
+        
+
+
+        private Wrap oculus = new Wrap();
+        private Hmd hmd;
+
+        DateTime startTime;
+        
+        private bool isInitialized = false;
+
+        private OVR.Sizei backBufferSize;
+        private OVR.Sizei recommenedTex0Size;
+        private OVR.Sizei recommenedTex1Size;
+        OVR.Sizei renderTargetTextureSize;
+
+        private OVR.FovPort[] eyeFov;
+        private OVR.EyeRenderDesc[] eyeRenderDesc;
+        private OVR.Recti[] eyeRenderViewport;
+        private OVR.D3D11.D3D11TextureData[] eyeTexture;
+        //private OVR.Vector2f[] uvScaleOffsetOut;
+
+        OVR.Posef[] eyeRenderPose;
+        Viewport viewport;
+
+        uint framecounter = 0;
         #endregion
 
         #region Evaluate
@@ -340,28 +371,12 @@ namespace VVVV.DX11.Nodes
                 }
             }
 
-            /*if (this.FInFullScreen.IsChanged)
-            {
-                if (this.FInFullScreen[0])
-                {
-                    string path;
-                    this.FHost.GetNodePath(false, out path);
-                    INode2 n2 = hde.GetNodeFromPath(path);
-                    hde.SetComponentMode(n2, ComponentMode.Fullscreen);
-                }
-                else
-                {
-                    string path;
-                    this.FHost.GetNodePath(false, out path);
-                    INode2 n2 = hde.GetNodeFromPath(path);
-                    hde.SetComponentMode(n2, ComponentMode.InAWindow);
-                }
-            }*/
 
             this.FOutKState[0] = new KeyboardState(this.FKeys);
             this.FOutMouseState[0] = MouseState.Create(this.FMousePos.x, this.FMousePos.y, this.FMouseButtons.x > 0.5f, this.FMouseButtons.y > 0.5f, this.FMouseButtons.z> 0.5f, false, false, this.wheel);
             this.FOutBackBufferSize[0] = new Vector2D(this.Width, this.Height);
-            
+            //this.FOutBackBufferSize[0] = new Vector2D(2364, 1461);
+
             this.FOutTouchSupport[0] = this.touchsupport;
 
             this.FOutTouchData.SliceCount = this.touches.Count;
@@ -383,6 +398,11 @@ namespace VVVV.DX11.Nodes
 
             this.FOutDeviceHandle.SliceCount = 1;
             this.FOutDeviceHandle[0] = this.WindowHandle.ToInt32();
+
+            if (FInEnabled[0] && !isInitialized)
+            {
+                initOVR();
+            }
         }
         #endregion
 
@@ -390,6 +410,12 @@ namespace VVVV.DX11.Nodes
         void IDisposable.Dispose()
         {
             if (this.FOutBackBuffer[0] != null) { this.FOutBackBuffer[0].Dispose(); }
+            
+            if (oculus != null)
+            {
+                oculus.Dispose();
+                logger.Log(LogType.Debug, "Oculus:  Disposed:" + oculus.Disposed);
+            }
         }
         #endregion
 
@@ -413,13 +439,16 @@ namespace VVVV.DX11.Nodes
 
             if (this.FInEnabled[0])
             {
-
                 if (this.BeginQuery != null)
                 {
                     this.BeginQuery(context);
                 }
 
+                
+
+
                 this.chain = this.FOutBackBuffer[0][context];
+
                 DX11GraphicsRenderer renderer = this.renderers[context];
 
                 renderer.EnableDepth = this.FInDepthBuffer[0];
@@ -428,8 +457,120 @@ namespace VVVV.DX11.Nodes
                 renderer.SetRenderTargets(chain);
                 renderer.SetTargets();
 
+
+                // Configure d3d11.
+                OVR.D3D11.D3D11ConfigData d3d11cfg = new OVR.D3D11.D3D11ConfigData();
+                d3d11cfg.Header.API = OVR.RenderAPIType.D3D11;
+                d3d11cfg.Header.BackBufferSize = new OVR.Sizei(hmd.Resolution.Width, hmd.Resolution.Height);
+                d3d11cfg.Header.Multisample = 1;
+                d3d11cfg.Device = device.ComPointer;
+                //d3d11cfg.DeviceContext = immediateContext.NativePointer;
+                d3d11cfg.DeviceContext = context.CurrentDeviceContext.ComPointer;
+                //d3d11cfg.BackBufferRenderTargetView = backBufferRenderTargetView.NativePointer;
+                d3d11cfg.BackBufferRenderTargetView = chain.RTV.ComPointer;
+                //d3d11cfg.SwapChain = swapChain.NativePointer;
+                //d3d11cfg.SwapChain = this.chain.Resource.ComPointer;
+                d3d11cfg.SwapChain = this.chain.SwapChain.ComPointer;
+
+
+                renderTargetTextureSize.Width = this.Width;
+                renderTargetTextureSize.Height = this.Height;
+
+                //OVR.Sizei renderTargetSize = new OVR.Sizei(recommenedTex0Size.Width + recommenedTex1Size.Width, Math.Max(recommenedTex0Size.Height, recommenedTex1Size.Height));
+                OVR.Sizei renderTargetSize = new OVR.Sizei();
+                renderTargetSize.Width = this.Width;
+                renderTargetSize.Height = this.Height;
+
+                eyeRenderViewport = new OVR.Recti[2];
+                eyeRenderViewport[0].Position = new OVR.Vector2i(0, 0);
+                eyeRenderViewport[0].Size = new OVR.Sizei(renderTargetSize.Width / 2, renderTargetSize.Height);
+                eyeRenderViewport[1].Position = new OVR.Vector2i((renderTargetSize.Width + 1) / 2, 0);
+                eyeRenderViewport[1].Size = eyeRenderViewport[0].Size;
+
+                // Query D3D texture data.
+                eyeTexture = new OVR.D3D11.D3D11TextureData[2];
+                eyeTexture[0].Header.API = OVR.RenderAPIType.D3D11;
+                eyeTexture[0].Header.TextureSize = renderTargetTextureSize;
+                eyeTexture[0].Header.RenderViewport = eyeRenderViewport[0];
+                eyeTexture[0].Texture = this.chain.Resource.ComPointer;
+                eyeTexture[0].ShaderResourceView = this.chain.SRV.ComPointer;
+
+                // Right eye uses the same texture, but different rendering viewport.
+                eyeTexture[1] = eyeTexture[0];
+                eyeTexture[1].Header.RenderViewport = eyeRenderViewport[1];
+
+                OVR.EyeRenderDesc[] eyeRenderDesc = hmd.ConfigureRendering(d3d11cfg, OVR.DistortionCaps.ovrDistortionCap_Chromatic | OVR.DistortionCaps.ovrDistortionCap_Vignette | OVR.DistortionCaps.ovrDistortionCap_TimeWarp | OVR.DistortionCaps.ovrDistortionCap_Overdrive, eyeFov);
+
+
+                //hmd.BeginFrame(0);
+
+
+
                 try
                 {
+                    float timeSinceStart = (float)(DateTime.Now - startTime).TotalSeconds;
+
+                    OculusWrap.OVR.HSWDisplayState hasWarningState;
+                    hmd.GetHSWDisplayState(out hasWarningState);
+
+                    // Remove the health and safety warning.
+                    if (hasWarningState.Displayed == 1)
+                        hmd.DismissHSWDisplay();
+
+                    hmd.BeginFrame(0);
+
+                    float bodyYaw = 3.141592f;
+                    OVR.Vector3f headPos = new OVR.Vector3f(0.0f, hmd.GetFloat(OVR.OVR_KEY_EYE_HEIGHT, 1.6f), -5.0f);
+                    //Viewport viewport = new Viewport(0, 0, renderTargetTexture.Description.Width, renderTargetTexture.Description.Height, 0.0f, 1.0f);
+                    viewport = new Viewport(0, 0, this.FOutBackBuffer[0][context].Resource.Description.Width, this.FOutBackBuffer[0][context].Resource.Description.Height, 0.0f, 1.0f);
+                    //Viewport viewport = new Viewport(0, 0, 2364, 1461, 0.0f, 1.0f);
+                    eyeRenderPose = new OVR.Posef[2];
+
+
+                    for (int eyeIndex = 0; eyeIndex < OVR.Eye_Count; eyeIndex++)
+                    {
+                        OVR.EyeType eye = hmd.EyeRenderOrder[eyeIndex];
+
+                        eyeRenderPose[(int)eye] = hmd.GetHmdPosePerEye(eye);
+
+                        // Get view and projection matrices
+                        Quaternion rotationQuaternion = Helpers.ToQuaternion(eyeRenderPose[(int)eye].Orientation);
+
+                        Vector3 eyePosition = eyeRenderPose[(int)eye].Position.ToVector3();
+
+                        Matrix rollPitchYaw = Matrix.RotationY(bodyYaw);
+                        Matrix rotation = Matrix.RotationQuaternion(rotationQuaternion);
+                        Matrix finalRollPitchYaw = rollPitchYaw * rotation;
+                        Vector3 finalUp = Vector3.Transform(new Vector3(0, -1, 0), finalRollPitchYaw).ToVector3();
+                        Vector3 finalForward = Vector3.Transform(new Vector3(0, 0, -1), finalRollPitchYaw).ToVector3();
+                        Vector3 shiftedEyePos = headPos.ToVector3() + Vector3.Transform(eyePosition, rollPitchYaw).ToVector3();
+                        Matrix viewMatrix = Matrix.LookAtLH(shiftedEyePos, shiftedEyePos + finalForward, finalUp);
+                        Matrix projectionMatrix = oculus.Matrix4f_Projection(eyeRenderDesc[(int)eye].Fov, 0.1f, 100.0f, false).ToMatrix();
+
+                        //projectionMatrix.Transpose();
+
+                        Matrix.Transpose(projectionMatrix);
+
+                        // Set the viewport for the current eye.
+                        viewport = new Viewport(this.eyeRenderViewport[(int)eye].Position.x, eyeRenderViewport[(int)eye].Position.y, eyeRenderViewport[(int)eye].Size.Width, eyeRenderViewport[(int)eye].Size.Height, 0.0f, 1.0f);
+                        
+                        //immediateContext.Rasterizer.SetViewport(viewport);
+                        device.ImmediateContext.Rasterizer.SetViewports(viewport);
+
+                        Matrix world = Matrix.RotationX(timeSinceStart) * Matrix.RotationY(timeSinceStart * 2) * Matrix.RotationZ(timeSinceStart * 3);
+                        Matrix worldViewProjection = world * viewMatrix * projectionMatrix;
+                        //worldViewProjection.Transpose();
+
+                        Matrix.Transpose(worldViewProjection);
+
+                        //immediateContext.UpdateSubresource(ref worldViewProjection, contantBuffer);
+                        //device.ImmediateContext.UpdateSubresource(ref worldViewProjection);
+
+                        // Draw the cube
+                        //immediateContext.Draw(36, 0);
+                    }
+
+
                     if (this.FInClear[0])
                     {
                         //Remove Shader view if bound as is
@@ -460,6 +601,8 @@ namespace VVVV.DX11.Nodes
                         }
                     }
 
+                    //hmd.EndFrame(eyeRenderPose, eyeTexture);
+
                     if (this.EndQuery != null)
                     {
                         this.EndQuery(context);
@@ -485,10 +628,13 @@ namespace VVVV.DX11.Nodes
         }
         #endregion
 
+        #region RenderSlice
         public void RenderSlice(DX11RenderContext context,DX11RenderSettings settings, int i, bool viewportpop)
         {
             float cw = (float)this.ClientSize.Width;
             float ch = (float)this.ClientSize.Height;
+            //float cw = (float)2364;
+            //float ch = (float)1461;
 
             settings.ViewportIndex = i;
             settings.View = this.FInView[i];
@@ -503,14 +649,23 @@ namespace VVVV.DX11.Nodes
             settings.BackBuffer = this.FOutBackBuffer[0][context];
             settings.RenderWidth = this.FOutBackBuffer[0][context].Resource.Description.Width;
             settings.RenderHeight = this.FOutBackBuffer[0][context].Resource.Description.Height;
+            //settings.RenderWidth = 2364;
+            //settings.RenderHeight = 1461;     //too late here
+
+            framecounter++;
+            hmd.BeginFrame(framecounter);
+            hmd.BeginFrame(0);
+
             settings.ResourceSemantics.Clear();
             settings.CustomSemantics.Clear();
 
             if (viewportpop)
             {
-                context.RenderTargetStack.PushViewport(this.FInViewPort[i].Normalize(cw, ch));
+                //context.RenderTargetStack.PushViewport(this.FInViewPort[i].Normalize(cw, ch));
+                context.RenderTargetStack.PushViewport(viewport);
             }
 
+            
 
             //Call render on all layers
             for (int j = 0; j < this.FInLayer.SliceCount; j++)
@@ -518,11 +673,14 @@ namespace VVVV.DX11.Nodes
                 this.FInLayer[j][context].Render(this.FInLayer.PluginIO, context, settings);
             }
 
+            hmd.EndFrame(eyeRenderPose, eyeTexture);
+
             if (viewportpop)
             {
                 context.RenderTargetStack.PopViewport();
             }
         }
+        #endregion
 
         #region Update
         public void Update(IPluginIO pin, DX11RenderContext context)
@@ -634,6 +792,165 @@ namespace VVVV.DX11.Nodes
         }
         #endregion
 
+        #region initOVR
+        private void initOVR()
+        {
+            logger.Log(LogType.Debug, "Oculus:  Starting Initialization");
+
+            startTime = DateTime.Now;
+
+            oculus.Initialize();
+
+            // Use the head mounted display, if it's available, otherwise use the debug HMD.
+            int numberOfHeadMountedDisplays = oculus.Hmd_Detect();
+            if (numberOfHeadMountedDisplays > 0)
+                hmd = oculus.Hmd_Create(0);
+            else
+                hmd = oculus.Hmd_CreateDebug(OculusWrap.OVR.HmdType.DK2);
+
+            if (hmd == null)
+            {
+                logger.Log(LogType.Warning, "Oculus Rift not detected.");
+                return;
+            }
+            if (hmd.ProductName == string.Empty)
+                logger.Log(LogType.Warning, "The HMD is not enabled. There's a tear in the Rift");
+
+            // attach hmd
+            OVR.Recti destMirrorRect;
+            OVR.Recti sourceRenderTargetRect;
+            hmd.AttachToWindow(this.WindowHandle, out destMirrorRect, out sourceRenderTargetRect);
+
+            // Create a backbuffer that's the same size as the HMD's resolution.
+            this.backBufferSize.Width = hmd.Resolution.Width;
+            this.backBufferSize.Height = hmd.Resolution.Height;
+
+            // Configure Stereo settings.
+            this.recommenedTex0Size = hmd.GetFovTextureSize(OVR.EyeType.Left, hmd.DefaultEyeFov[0], 1.0f);
+            this.recommenedTex1Size = hmd.GetFovTextureSize(OVR.EyeType.Right, hmd.DefaultEyeFov[1], 1.0f);
+
+            OVR.Sizei renderTargetSize = new OVR.Sizei(recommenedTex0Size.Width + recommenedTex1Size.Width, Math.Max(recommenedTex0Size.Height, recommenedTex1Size.Height));
+
+
+            // Define a render target texture that's the size that the Oculus SDK recommends, for it's default field of view.
+            renderTargetTextureSize.Width = recommenedTex0Size.Width + recommenedTex1Size.Width;
+            renderTargetTextureSize.Height = Math.Max(recommenedTex0Size.Height, recommenedTex1Size.Height);
+
+            eyeFov = new OVR.FovPort[]
+			{ 
+				hmd.DefaultEyeFov[0], 
+				hmd.DefaultEyeFov[1] 
+			};
+
+            eyeRenderDesc = new OVR.EyeRenderDesc[2];
+            eyeRenderDesc[0] = hmd.GetRenderDesc(OVR.EyeType.Left, eyeFov[0]);
+            eyeRenderDesc[1] = hmd.GetRenderDesc(OVR.EyeType.Right, eyeFov[1]);
+
+            //FProjectionMatrices.SliceCount = 2;
+            //for (int i = 0; i < 2; i++)
+            //{
+            //    //OVR.Matrix4f m = oculus.Matrix4f_Projection(eyeRenderDesc[i].Fov, 0.1f, 100.0f, false);
+            //    OVR.Matrix4f m = oculus.Matrix4f_Projection(eyeRenderDesc[i].Fov, FNearPlane[0], FFarPlane[0], false);
+            //    FProjectionMatrices[i] = new Matrix4x4(m.M11, m.M12, m.M13, m.M14, m.M21, m.M22, m.M23, m.M24, m.M31, m.M32, m.M33, m.M34, m.M41, m.M42, m.M43, m.M44).Transpose();
+            //}
+
+            //eyeRenderViewport = new OVR.Recti[2];
+            //eyeRenderViewport[0].Position = new OVR.Vector2i(0, 0);
+            //eyeRenderViewport[0].Size = new OVR.Sizei(renderTargetSize.Width / 2, renderTargetSize.Height);
+            //eyeRenderViewport[1].Position = new OVR.Vector2i((renderTargetSize.Width + 1) / 2, 0);
+            //eyeRenderViewport[1].Size = eyeRenderViewport[0].Size;
+
+            /*
+            // Query D3D texture data.
+            eyeTexture = new OVR.D3D11.D3D11TextureData[2];
+            eyeTexture[0].Header.API = OVR.RenderAPIType.D3D11;
+            eyeTexture[0].Header.TextureSize = renderTargetTextureSize;
+            eyeTexture[0].Header.RenderViewport = eyeRenderViewport[0];
+            eyeTexture[0].Texture = this.chain.Resource.ComPointer;     // chain is null at this point :(
+            eyeTexture[0].ShaderResourceView = this.chain.SRV.ComPointer;
+
+            // Right eye uses the same texture, but different rendering viewport.
+            eyeTexture[1] = eyeTexture[0];
+            eyeTexture[1].Header.RenderViewport = eyeRenderViewport[1];
+            */
+
+            /*
+            OVR.Vector2f[] uvScaleOffsetOut = new OVR.Vector2f[2];
+            FRenderScaleAndOffset.SliceCount = 4;
+            hmd.GetRenderScaleAndOffset(eyeFov[0], recommenedTex0Size, eyeRenderViewport[0], out uvScaleOffsetOut);
+            FRenderScaleAndOffset[0] = ToVector2D(uvScaleOffsetOut[0]);
+            FRenderScaleAndOffset[1] = ToVector2D(uvScaleOffsetOut[1]);
+
+            hmd.GetRenderScaleAndOffset(eyeFov[1], recommenedTex1Size, eyeRenderViewport[1], out uvScaleOffsetOut);
+            FRenderScaleAndOffset[2] = ToVector2D(uvScaleOffsetOut[0]);
+            FRenderScaleAndOffset[3] = ToVector2D(uvScaleOffsetOut[1]);
+            */
+
+            // Specify which head tracking capabilities to enable.
+            hmd.SetEnabledCaps(OVR.HmdCaps.LowPersistence | OVR.HmdCaps.DynamicPrediction);
+
+            // Start the sensor which informs of the Rift's pose and motion
+            hmd.ConfigureTracking(OVR.TrackingCaps.ovrTrackingCap_Orientation | OVR.TrackingCaps.ovrTrackingCap_MagYawCorrection | OVR.TrackingCaps.ovrTrackingCap_Position, OVR.TrackingCaps.None);
+      
+
+            isInitialized = true;
+            logger.Log(LogType.Debug, "Oculus:  Finished Initialization");
+        }
+        #endregion
+
+        #region helpers
+        private Vector2D ToVector2D(OVR.Vector2f vector)
+        {
+            return new Vector2D(vector.X, vector.Y);
+        }
+
+
+        private Vector3D ToVector3D(OVR.Vector3f vector)
+        {
+            return new Vector3D(vector.X, vector.Y, vector.Z);
+        }
+
+        private Matrix4x4 ToMatrix4X4(OVR.Matrix4f matrix)
+        {
+            return new Matrix4x4(matrix.M11, matrix.M12, matrix.M13, matrix.M14,
+                                 matrix.M21, matrix.M22, matrix.M23, matrix.M24,
+                                 matrix.M31, matrix.M32, matrix.M33, matrix.M34,
+                                 matrix.M41, matrix.M42, matrix.M43, matrix.M44);
+        }
+
+        
+        private void OutputDistortionMesh(ISpread<int> FMeshIndices, ISpread<float> FDistortionMesh, OVR.EyeType eye, OVR.FovPort eyeFov)
+        {
+            OVR.DistortionVertex[] dv;
+            ushort[] indexData;
+            bool result = hmd.CreateDistortionMesh(eye, eyeFov, OVR.DistortionCaps.ovrDistortionCap_Chromatic, out indexData, out dv);
+
+
+            //Mesh indices
+            FMeshIndices.SliceCount = indexData.Length;
+            for (int i = 0; i < indexData.Length; i++)
+            {
+                FMeshIndices[i] = indexData[i];
+            }
+            //Mesh Vertices
+            int elementCount = 10;
+            FDistortionMesh.SliceCount = dv.Length * elementCount;
+            for (int i = 0; i < dv.Length; i++)
+            {
+
+                FDistortionMesh[i * elementCount + 0] = dv[i].ScreenPosNDC.X;
+                FDistortionMesh[i * elementCount + 1] = dv[i].ScreenPosNDC.Y;
+                FDistortionMesh[i * elementCount + 2] = dv[i].TanEyeAnglesR.X;
+                FDistortionMesh[i * elementCount + 3] = dv[i].TanEyeAnglesR.Y;
+                FDistortionMesh[i * elementCount + 4] = dv[i].TanEyeAnglesG.X;
+                FDistortionMesh[i * elementCount + 5] = dv[i].TanEyeAnglesG.Y;
+                FDistortionMesh[i * elementCount + 6] = dv[i].TanEyeAnglesB.X;
+                FDistortionMesh[i * elementCount + 7] = dv[i].TanEyeAnglesB.Y;
+                FDistortionMesh[i * elementCount + 8] = dv[i].TimeWarpFactor;
+                FDistortionMesh[i * elementCount + 9] = dv[i].VignetteFactor;
+            }
+        }
+        
 
         public bool IsVisible
         {
@@ -680,9 +997,12 @@ namespace VVVV.DX11.Nodes
             // DX11RendererNode
             // 
             this.BackColor = System.Drawing.Color.Black;
-            this.Name = "DX11RendererNode";
+            this.Name = "OVR";
             this.ResumeLayout(false);
 
         }
     }
+        #endregion helpers
+
+
 }
