@@ -33,6 +33,9 @@ namespace VVVV.DX11.Nodes.Nodes.Renderers.Graphics
         [Import()]
         protected ILogger logger;
 
+        [Input("Position", AsInt=true)]
+        protected IDiffSpread<Vector2> FInPosition;
+
         [Input("TopMost")]
         protected IDiffSpread<bool> FInTopMost;
 
@@ -86,6 +89,9 @@ namespace VVVV.DX11.Nodes.Nodes.Renderers.Graphics
         private int prevx = 400;
         private int prevy = 300;
 
+        private int prevpx;
+        private int prevpy;
+
         private bool setfull = false;
         private bool invalidate;
         #endregion
@@ -136,6 +142,12 @@ namespace VVVV.DX11.Nodes.Nodes.Renderers.Graphics
                 this.FInvalidateSwapChain = true;
             }
 
+            if (this.FInPosition.IsChanged)
+            {
+                this.form.Left = (int)this.FInPosition[0].X;
+                this.form.Top = (int)this.FInPosition[0].Y;
+            }
+
             this.updateddevices.Clear();
             this.rendereddevices.Clear();
             
@@ -165,7 +177,7 @@ namespace VVVV.DX11.Nodes.Nodes.Renderers.Graphics
             if (this.FResized || this.FInvalidateSwapChain || this.swapchain == null)
             {
                 if (this.swapchain != null) { this.swapchain.Dispose(); }
-                this.swapchain = new DX11SwapChain(context, this.form.Handle, Format.R8G8B8A8_UNorm, sd,this.FInRate[0]);
+                this.swapchain = new DX11SwapChain(context, this.form.Handle, Format.R8G8B8A8_UNorm, sd,this.FInRate[0],1);
             }
 
             if (this.renderer == null) { this.renderer = new DX11GraphicsRenderer(this.FHost, context); }

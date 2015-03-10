@@ -15,20 +15,17 @@ using FeralTic.DX11.Resources;
 
 namespace VVVV.DX11.Nodes
 {
-    [PluginInfo(Name = "Topology", Category = "DX11.Geometry", Version = "", Author = "vux")]
-    public class GeometryTopologyNode : IPluginEvaluate, IDX11ResourceProvider
+    [PluginInfo(Name = "IndexOnlyDrawer", Category = "DX11.Drawer", Version = "", Author = "vux")]
+    public class DX11IndexOnlyDrawerNode : IPluginEvaluate, IDX11ResourceProvider
     {
-        [Input("Geometry In",CheckIfChanged=true)]
-        protected Pin<DX11Resource<IDX11Geometry>> FInGeom;
+        [Input("Geometry In", CheckIfChanged = true)]
+        protected Pin<DX11Resource<DX11IndexedGeometry>> FInGeom;
 
-        [Input("Topology")]
-        protected IDiffSpread<PrimitiveTopology> FInTopology;
-
-        [Input("Enabled")]
+        [Input("Enabled",DefaultValue=1)]
         protected IDiffSpread<bool> FInEnabled;
 
         [Output("Geometry Out")]
-        protected ISpread<DX11Resource<IDX11Geometry>> FOutGeom;
+        protected ISpread<DX11Resource<DX11IndexedGeometry>> FOutGeom;
 
         bool invalidate = false;
 
@@ -40,9 +37,9 @@ namespace VVVV.DX11.Nodes
             {
                 this.FOutGeom.SliceCount = SpreadMax;
 
-                for (int i = 0; i < SpreadMax; i++) { if (this.FOutGeom[i] == null) { this.FOutGeom[i] = new DX11Resource<IDX11Geometry>(); } }
+                for (int i = 0; i < SpreadMax; i++) { if (this.FOutGeom[i] == null) { this.FOutGeom[i] = new DX11Resource<DX11IndexedGeometry>(); } }
 
-                invalidate = this.FInGeom.IsChanged || this.FInEnabled.IsChanged || this.FInTopology.IsChanged;
+                invalidate = this.FInGeom.IsChanged || this.FInEnabled.IsChanged;
 
                 if (invalidate) { this.FOutGeom.Stream.IsChanged = true; }
             }
@@ -58,23 +55,27 @@ namespace VVVV.DX11.Nodes
 
             for (int i = 0; i < this.FOutGeom.SliceCount; i++)
             {
-                if (this.FInEnabled[i] && this.FInTopology[i] != PrimitiveTopology.Undefined && this.FInGeom[i].Contains(context))
+                if (this.FInEnabled[i] && this.FInGeom[i].Contains(context))
                 {
+                    DX11IndexedGeometry v = (DX11IndexedGeometry)this.FInGeom[i][context].ShallowCopy();
 
-                    IDX11Geometry geom = this.FInGeom[i][context].ShallowCopy();
-                    geom.Topology = this.FInTopology[i];
-                    this.FOutGeom[i][context] = geom;
+                    DX11PerVertexIndexedDrawer drawer = new DX11PerVertexIndexedDrawer();
+                    v.AssignDrawer(drawer);
+
+                    this.FOutGeom[i][context] = v;
+
                 }
                 else
                 {
                     this.FOutGeom[i][context] = this.FInGeom[i][context];
                 }
+
             }
         }
 
         public void Destroy(IPluginIO pin, DX11RenderContext context, bool force)
         {
-
+            //Not ownding resource eg: do nothing
         }
     }
 }

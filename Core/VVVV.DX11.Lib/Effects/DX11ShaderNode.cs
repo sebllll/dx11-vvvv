@@ -86,6 +86,9 @@ namespace VVVV.DX11.Nodes.Layers
         [Output("Technique Valid")]
         protected ISpread<bool> FOutTechniqueValid;
 
+        [Output("Custom Semantics", Visibility=PinVisibility.OnlyInspector)]
+        protected ISpread<string> FoutCS;
+
         #endregion
 
 
@@ -119,6 +122,8 @@ namespace VVVV.DX11.Nodes.Layers
                 inAttr.DefaultEnumEntry = defaultenum;
                 inAttr.Order = 1000;
                 this.FInTechnique = this.FFactory.CreateDiffSpread<EnumEntry>(inAttr);
+
+                this.FoutCS.AssignFrom(this.varmanager.GetCustomData());
             }
             else
             {
@@ -126,6 +131,7 @@ namespace VVVV.DX11.Nodes.Layers
                 {
                     this.FHost.UpdateEnum(this.TechniqueEnumId, shader.TechniqueNames[0], shader.TechniqueNames);
                     this.varmanager.UpdateShaderPins();
+                    this.FoutCS.AssignFrom(this.varmanager.GetCustomData());
                 }
             }
 
@@ -325,6 +331,24 @@ namespace VVVV.DX11.Nodes.Layers
                         shaderdata.Update(this.FInTechnique[0].Index, 0, this.FGeometry);
                         this.FOutLayoutValid.AssignFrom(shaderdata.LayoutValid);
                         this.FOutLayoutMsg.AssignFrom(shaderdata.LayoutMsg);
+
+                        int errorCount = 0;
+                        StringBuilder sbMsg = new StringBuilder();
+                        sbMsg.Append("Invalid layout detected for slices:");
+                        for(int i = 0; i < shaderdata.LayoutValid.Count; i++)
+                        {
+                            if (shaderdata.LayoutValid[i] == false)
+                            {
+                                errorCount++;
+                                sbMsg.Append(i + ",");
+                            }
+                        }
+
+                        if (errorCount > 0)
+                        {
+                            this.FHost.Log(TLogType.Warning, sbMsg.ToString());
+                        }
+
                         this.techniquechanged = false;
                     }
 
