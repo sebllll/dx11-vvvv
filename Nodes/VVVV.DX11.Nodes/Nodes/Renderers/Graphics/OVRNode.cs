@@ -541,143 +541,7 @@ namespace VVVV.DX11.Nodes
         }
 
         
-        private void calcViewProj(DX11RenderContext context)
-        {
-            float timeSinceStart = (float)(DateTime.Now - startTime).TotalSeconds;
-
-            float bodyYaw = 3.141592f;
-            OVR.Vector3f headPos = new OVR.Vector3f(0.0f, hmd.GetFloat(OVR.OVR_KEY_EYE_HEIGHT, 1.6f), -5.0f);
-            //Viewport viewport = new Viewport(0, 0, renderTargetTexture.Description.Width, renderTargetTexture.Description.Height, 0.0f, 1.0f);
-            viewport = new Viewport(0, 0, this.FOutBackBuffer[0][context].Resource.Description.Width, this.FOutBackBuffer[0][context].Resource.Description.Height, 0.0f, 1.0f);
-            //Viewport viewport = new Viewport(0, 0, 2364, 1461, 0.0f, 1.0f);
-            eyeRenderPose = new OVR.Posef[2];
-
-            for (int eyeIndex = 0; eyeIndex < OVR.Eye_Count; eyeIndex++)
-            {
-                OVR.EyeType eye = hmd.EyeRenderOrder[eyeIndex];
-
-                eyeRenderPose = new OVR.Posef[2];
-                eyeRenderPose[(int)eye] = hmd.GetHmdPosePerEye(eye);
-
-
-                // get viewproj from ovr
-
-                // Get view and projection matrices
-                Quaternion rotationQuaternion = Helpers.ToQuaternion(eyeRenderPose[(int)eye].Orientation);
-
-                Vector3 eyePosition = eyeRenderPose[(int)eye].Position.ToVector3();
-
-                Matrix rollPitchYaw = Matrix.RotationY(bodyYaw);
-                Matrix rotation = Matrix.RotationQuaternion(rotationQuaternion);
-                Matrix finalRollPitchYaw = rollPitchYaw * rotation;
-                Vector3 finalUp = Vector3.Transform(new Vector3(0, -1, 0), finalRollPitchYaw).ToVector3();
-                Vector3 finalForward = Vector3.Transform(new Vector3(0, 0, -1), finalRollPitchYaw).ToVector3();
-                Vector3 shiftedEyePos = headPos.ToVector3() + Vector3.Transform(eyePosition, rollPitchYaw).ToVector3();
-                Matrix viewMatrix = Matrix.LookAtLH(shiftedEyePos, shiftedEyePos + finalForward, finalUp);
-                Matrix projectionMatrix = oculus.Matrix4f_Projection(eyeRenderDesc[(int)eye].Fov, 0.1f, 100.0f, false).ToMatrix();
-
-                //projectionMatrix.Transpose();
-
-                Matrix.Transpose(projectionMatrix);
-
-                // Set the viewport for the current eye.
-                viewport = new Viewport(this.eyeRenderViewport[(int)eye].Position.x, eyeRenderViewport[(int)eye].Position.y, eyeRenderViewport[(int)eye].Size.Width, eyeRenderViewport[(int)eye].Size.Height, 0.0f, 1.0f);
-
-                //immediateContext.Rasterizer.SetViewport(viewport);
-                //device.ImmediateContext.Rasterizer.SetViewports(viewport);
-
-                Matrix world = Matrix.RotationX(timeSinceStart) * Matrix.RotationY(timeSinceStart * 2) * Matrix.RotationZ(timeSinceStart * 3);
-                Matrix worldViewProjection = world * viewMatrix * projectionMatrix;
-                //worldViewProjection.Transpose();
-
-                Matrix.Transpose(worldViewProjection);
-
-                //immediateContext.UpdateSubresource(ref worldViewProjection, contantBuffer);
-                //device.ImmediateContext.UpdateSubresource(ref worldViewProjection);  
-
-            }
-        }
-
-        private void disableWarning()
-        {
-            OculusWrap.OVR.HSWDisplayState hasWarningState;
-            hmd.GetHSWDisplayState(out hasWarningState);
-
-            // Remove the health and safety warning.
-            if (hasWarningState.Displayed == 1)
-                hmd.DismissHSWDisplay();
-        }
-
-        private void configOVR(DX11RenderContext context)
-        {
-            if (isInitialized && this.chain != null)
-            {
-                // Configure d3d11.
-                OVR.D3D11.D3D11ConfigData d3d11cfg = new OVR.D3D11.D3D11ConfigData();
-                d3d11cfg.Header.API = OVR.RenderAPIType.D3D11;
-                d3d11cfg.Header.BackBufferSize = new OVR.Sizei(hmd.Resolution.Width, hmd.Resolution.Height);
-                //d3d11cfg.Header.Multisample = this.chain.SwapChain.Description.BufferCount;
-                d3d11cfg.Header.Multisample = 1;
-
-                d3d11cfg.Device = this.chain.UAV.Device.ComPointer;
-                //d3d11cfg.Device = this.chain.SwapChain.Device.ComPointer;
-                //d3d11cfg.Device = device.ComPointer;
-
-                //d3d11cfg.DeviceContext = immediateContext.NativePointer;
-                d3d11cfg.DeviceContext = context.Device.ComPointer;
-                d3d11cfg.DeviceContext = context.CurrentDeviceContext.ComPointer;
-
-                //d3d11cfg.BackBufferRenderTargetView = backBufferRenderTargetView.NativePointer;
-                d3d11cfg.BackBufferRenderTargetView = chain.RTV.ComPointer;
-                d3d11cfg.BackBufferRenderTargetView = this.FOutBackBuffer[0][context].RTV.ComPointer;
-                //d3d11cfg.SwapChain = swapChain.NativePointer;
-                //d3d11cfg.SwapChain = this.chain.Resource.ComPointer;
-                d3d11cfg.SwapChain = this.chain.Resource.ComPointer;
-                d3d11cfg.SwapChain = this.chain.SwapChain.ComPointer;
-                d3d11cfg.SwapChain = this.FOutBackBuffer[0][context].SwapChain.ComPointer;
-                //d3d11cfg.SwapChain = this.FOutBackBuffer[0][context].Resource.ComPointer;
-                //d3d11cfg.SwapChain = this.chain.SwapChain.Description.OutputHandle;
-
-                OVR.EyeRenderDesc[] eyeRenderDesc = hmd.ConfigureRendering(d3d11cfg, OVR.DistortionCaps.ovrDistortionCap_Chromatic | OVR.DistortionCaps.ovrDistortionCap_Vignette | OVR.DistortionCaps.ovrDistortionCap_TimeWarp | OVR.DistortionCaps.ovrDistortionCap_Overdrive, eyeFov);
-
-                // Specify which head tracking capabilities to enable.
-                hmd.SetEnabledCaps(OVR.HmdCaps.LowPersistence | OVR.HmdCaps.DynamicPrediction);
-
-                // Start the sensor which informs of the Rift's pose and motion
-                hmd.ConfigureTracking(OVR.TrackingCaps.ovrTrackingCap_Orientation | OVR.TrackingCaps.ovrTrackingCap_MagYawCorrection | OVR.TrackingCaps.ovrTrackingCap_Position, OVR.TrackingCaps.None);
-
-                // -------------------------
-
-                renderTargetTextureSize.Width = this.Width;
-                renderTargetTextureSize.Height = this.Height;
-
-                //OVR.Sizei renderTargetSize = new OVR.Sizei(recommenedTex0Size.Width + recommenedTex1Size.Width, Math.Max(recommenedTex0Size.Height, recommenedTex1Size.Height));
-                OVR.Sizei renderTargetSize = new OVR.Sizei();
-                renderTargetSize.Width = this.Width;
-                renderTargetSize.Height = this.Height;
-
-                eyeRenderViewport = new OVR.Recti[2];
-                eyeRenderViewport[0].Position = new OVR.Vector2i(0, 0);
-                eyeRenderViewport[0].Size = new OVR.Sizei(renderTargetSize.Width / 2, renderTargetSize.Height);
-                eyeRenderViewport[1].Position = new OVR.Vector2i((renderTargetSize.Width + 1) / 2, 0);
-                eyeRenderViewport[1].Size = eyeRenderViewport[0].Size;
-
-                // Query D3D texture data.
-                eyeTexture = new OVR.D3D11.D3D11TextureData[2];
-                eyeTexture[0].Header.API = OVR.RenderAPIType.D3D11;
-                eyeTexture[0].Header.TextureSize = renderTargetTextureSize;
-                eyeTexture[0].Header.RenderViewport = eyeRenderViewport[0];
-                eyeTexture[0].Texture = this.chain.Resource.ComPointer;
-
-                eyeTexture[0].Texture = Texture2D.FromSwapChain<Texture2D>(this.chain.SwapChain, 0).ComPointer;
-
-                eyeTexture[0].ShaderResourceView = this.chain.SRV.ComPointer;
-
-                // Right eye uses the same texture, but different rendering viewport.
-                eyeTexture[1] = eyeTexture[0];
-                eyeTexture[1].Header.RenderViewport = eyeRenderViewport[1];
-            }
-        }
+        
         #endregion
 
         #region RenderSlice
@@ -809,7 +673,6 @@ namespace VVVV.DX11.Nodes
                 {
                     this.FOutBackBuffer[0][this.RenderContext].Present(0, flags); 
                 }
-                //hmd.EndFrame(eyeRenderPose, eyeTexture);
             }
             catch
             {
@@ -840,7 +703,8 @@ namespace VVVV.DX11.Nodes
         }
         #endregion
 
-        #region initOVR
+        #region OVR
+
         private void initOVR()
         {
             logger.Log(LogType.Debug, "Oculus:  Starting Initialization");
@@ -886,6 +750,144 @@ namespace VVVV.DX11.Nodes
 
             isInitialized = true;
             logger.Log(LogType.Debug, "Oculus:  Finished Initialization");
+        }
+
+        private void calcViewProj(DX11RenderContext context)
+        {
+            float timeSinceStart = (float)(DateTime.Now - startTime).TotalSeconds;
+
+            float bodyYaw = 3.141592f;
+            OVR.Vector3f headPos = new OVR.Vector3f(0.0f, hmd.GetFloat(OVR.OVR_KEY_EYE_HEIGHT, 1.6f), -5.0f);
+            //Viewport viewport = new Viewport(0, 0, renderTargetTexture.Description.Width, renderTargetTexture.Description.Height, 0.0f, 1.0f);
+            viewport = new Viewport(0, 0, this.FOutBackBuffer[0][context].Resource.Description.Width, this.FOutBackBuffer[0][context].Resource.Description.Height, 0.0f, 1.0f);
+            //Viewport viewport = new Viewport(0, 0, 2364, 1461, 0.0f, 1.0f);
+            eyeRenderPose = new OVR.Posef[2];
+
+            for (int eyeIndex = 0; eyeIndex < OVR.Eye_Count; eyeIndex++)
+            {
+                OVR.EyeType eye = hmd.EyeRenderOrder[eyeIndex];
+
+                eyeRenderPose = new OVR.Posef[2];
+                eyeRenderPose[(int)eye] = hmd.GetHmdPosePerEye(eye);
+
+
+                // get viewproj from ovr
+
+                // Get view and projection matrices
+                Quaternion rotationQuaternion = Helpers.ToQuaternion(eyeRenderPose[(int)eye].Orientation);
+
+                Vector3 eyePosition = eyeRenderPose[(int)eye].Position.ToVector3();
+
+                Matrix rollPitchYaw = Matrix.RotationY(bodyYaw);
+                Matrix rotation = Matrix.RotationQuaternion(rotationQuaternion);
+                Matrix finalRollPitchYaw = rollPitchYaw * rotation;
+                Vector3 finalUp = Vector3.Transform(new Vector3(0, -1, 0), finalRollPitchYaw).ToVector3();
+                Vector3 finalForward = Vector3.Transform(new Vector3(0, 0, -1), finalRollPitchYaw).ToVector3();
+                Vector3 shiftedEyePos = headPos.ToVector3() + Vector3.Transform(eyePosition, rollPitchYaw).ToVector3();
+                Matrix viewMatrix = Matrix.LookAtLH(shiftedEyePos, shiftedEyePos + finalForward, finalUp);
+                Matrix projectionMatrix = oculus.Matrix4f_Projection(eyeRenderDesc[(int)eye].Fov, 0.1f, 100.0f, false).ToMatrix();
+
+                //projectionMatrix.Transpose();
+
+                Matrix.Transpose(projectionMatrix);
+
+                // Set the viewport for the current eye.
+                viewport = new Viewport(this.eyeRenderViewport[(int)eye].Position.x, eyeRenderViewport[(int)eye].Position.y, eyeRenderViewport[(int)eye].Size.Width, eyeRenderViewport[(int)eye].Size.Height, 0.0f, 1.0f);
+
+                //immediateContext.Rasterizer.SetViewport(viewport);
+                //device.ImmediateContext.Rasterizer.SetViewports(viewport);
+
+                Matrix world = Matrix.RotationX(timeSinceStart) * Matrix.RotationY(timeSinceStart * 2) * Matrix.RotationZ(timeSinceStart * 3);
+                Matrix worldViewProjection = world * viewMatrix * projectionMatrix;
+                //worldViewProjection.Transpose();
+
+                Matrix.Transpose(worldViewProjection);
+
+                //immediateContext.UpdateSubresource(ref worldViewProjection, contantBuffer);
+                //device.ImmediateContext.UpdateSubresource(ref worldViewProjection);  
+
+            }
+        }
+
+        private void disableWarning()
+        {
+            OculusWrap.OVR.HSWDisplayState hasWarningState;
+            hmd.GetHSWDisplayState(out hasWarningState);
+
+            // Remove the health and safety warning.
+            if (hasWarningState.Displayed == 1)
+                hmd.DismissHSWDisplay();
+        }
+
+        private void configOVR(DX11RenderContext context)
+        {
+            if (isInitialized && this.chain != null)
+            {
+                // Configure d3d11.
+                OVR.D3D11.D3D11ConfigData d3d11cfg = new OVR.D3D11.D3D11ConfigData();
+                d3d11cfg.Header.API = OVR.RenderAPIType.D3D11;
+                d3d11cfg.Header.BackBufferSize = new OVR.Sizei(hmd.Resolution.Width, hmd.Resolution.Height);
+                //d3d11cfg.Header.Multisample = this.chain.SwapChain.Description.BufferCount;
+                d3d11cfg.Header.Multisample = 1;
+
+                d3d11cfg.Device = this.chain.UAV.Device.ComPointer;
+                //d3d11cfg.Device = this.chain.SwapChain.Device.ComPointer;
+                //d3d11cfg.Device = device.ComPointer;
+
+                //d3d11cfg.DeviceContext = immediateContext.NativePointer;
+                //d3d11cfg.DeviceContext = context.Device.ComPointer;
+                d3d11cfg.DeviceContext = context.CurrentDeviceContext.ComPointer;
+
+                //d3d11cfg.BackBufferRenderTargetView = backBufferRenderTargetView.NativePointer;
+                //d3d11cfg.BackBufferRenderTargetView = chain.RTV.ComPointer;
+                d3d11cfg.BackBufferRenderTargetView = this.FOutBackBuffer[0][context].RTV.ComPointer;
+                //d3d11cfg.SwapChain = swapChain.NativePointer;
+                //d3d11cfg.SwapChain = this.chain.Resource.ComPointer;
+                //d3d11cfg.SwapChain = this.chain.Resource.ComPointer;
+                //d3d11cfg.SwapChain = this.chain.SwapChain.ComPointer;
+                d3d11cfg.SwapChain = this.FOutBackBuffer[0][context].SwapChain.ComPointer;
+                //d3d11cfg.SwapChain = this.FOutBackBuffer[0][context].Resource.ComPointer;
+                //d3d11cfg.SwapChain = this.chain.SwapChain.Description.OutputHandle;
+
+                OVR.EyeRenderDesc[] eyeRenderDesc = hmd.ConfigureRendering(d3d11cfg, OVR.DistortionCaps.ovrDistortionCap_Chromatic | OVR.DistortionCaps.ovrDistortionCap_Vignette | OVR.DistortionCaps.ovrDistortionCap_TimeWarp | OVR.DistortionCaps.ovrDistortionCap_Overdrive, eyeFov);
+
+                // Specify which head tracking capabilities to enable.
+                hmd.SetEnabledCaps(OVR.HmdCaps.LowPersistence | OVR.HmdCaps.DynamicPrediction);
+
+                // Start the sensor which informs of the Rift's pose and motion
+                hmd.ConfigureTracking(OVR.TrackingCaps.ovrTrackingCap_Orientation | OVR.TrackingCaps.ovrTrackingCap_MagYawCorrection | OVR.TrackingCaps.ovrTrackingCap_Position, OVR.TrackingCaps.None);
+
+                // -------------------------
+
+                renderTargetTextureSize.Width = this.Width;
+                renderTargetTextureSize.Height = this.Height;
+
+                //OVR.Sizei renderTargetSize = new OVR.Sizei(recommenedTex0Size.Width + recommenedTex1Size.Width, Math.Max(recommenedTex0Size.Height, recommenedTex1Size.Height));
+                OVR.Sizei renderTargetSize = new OVR.Sizei();
+                renderTargetSize.Width = this.Width;
+                renderTargetSize.Height = this.Height;
+
+                eyeRenderViewport = new OVR.Recti[2];
+                eyeRenderViewport[0].Position = new OVR.Vector2i(0, 0);
+                eyeRenderViewport[0].Size = new OVR.Sizei(renderTargetSize.Width / 2, renderTargetSize.Height);
+                eyeRenderViewport[1].Position = new OVR.Vector2i((renderTargetSize.Width + 1) / 2, 0);
+                eyeRenderViewport[1].Size = eyeRenderViewport[0].Size;
+
+                // Query D3D texture data.
+                eyeTexture = new OVR.D3D11.D3D11TextureData[2];
+                eyeTexture[0].Header.API = OVR.RenderAPIType.D3D11;
+                eyeTexture[0].Header.TextureSize = renderTargetTextureSize;
+                eyeTexture[0].Header.RenderViewport = eyeRenderViewport[0];
+                eyeTexture[0].Texture = this.chain.Resource.ComPointer;
+
+                eyeTexture[0].Texture = Texture2D.FromSwapChain<Texture2D>(this.chain.SwapChain, 0).ComPointer;
+
+                eyeTexture[0].ShaderResourceView = this.chain.SRV.ComPointer;
+
+                // Right eye uses the same texture, but different rendering viewport.
+                eyeTexture[1] = eyeTexture[0];
+                eyeTexture[1].Header.RenderViewport = eyeRenderViewport[1];
+            }
         }
         #endregion
 
