@@ -883,25 +883,21 @@ namespace VVVV.DX11.Nodes
             if (hmd.ProductName == string.Empty)
                 logger.Log(LogType.Warning, "The HMD is not enabled. There's a tear in the Rift");
 
-            // attach hmd
-            OVR.Recti destMirrorRect;
-            OVR.Recti sourceRenderTargetRect;
-            if (!hmd.AttachToWindow(this.WindowHandle, out destMirrorRect, out sourceRenderTargetRect))
-                throw new Exception("lala");
 
-            // Create a backbuffer that's the same size as the HMD's resolution.
-            this.backBufferSize.Width = hmd.Resolution.Width;
-            this.backBufferSize.Height = hmd.Resolution.Height;
 
             eyeFov = new OVR.FovPort[]
 			{ 
+
 				hmd.DefaultEyeFov[0], 
 				hmd.DefaultEyeFov[1] 
 			};
 
-            eyeRenderDesc = new OVR.EyeRenderDesc[2];
-            eyeRenderDesc[0] = hmd.GetRenderDesc(OVR.EyeType.Left, eyeFov[0]);
-            eyeRenderDesc[1] = hmd.GetRenderDesc(OVR.EyeType.Right, eyeFov[1]);
+
+            // Specify which head tracking capabilities to enable.
+            hmd.SetEnabledCaps(OVR.HmdCaps.LowPersistence | OVR.HmdCaps.DynamicPrediction);
+
+            // Start the sensor which informs of the Rift's pose and motion
+            hmd.ConfigureTracking(OVR.TrackingCaps.ovrTrackingCap_Orientation | OVR.TrackingCaps.ovrTrackingCap_MagYawCorrection | OVR.TrackingCaps.ovrTrackingCap_Position, OVR.TrackingCaps.None);
 
 
             isInitialized = true;
@@ -931,8 +927,6 @@ namespace VVVV.DX11.Nodes
                 eyeRenderPose[(int)eye] = hmd.GetHmdPosePerEye(eye);
 
 
-                // get viewproj from ovr
-
                 // Get view and projection matrices
                 Quaternion rotationQuaternion = Helpers.ToQuaternion(eyeRenderPose[(int)eye].Orientation);
 
@@ -956,6 +950,8 @@ namespace VVVV.DX11.Nodes
 
                 //immediateContext.Rasterizer.SetViewport(viewport);
                 //device.ImmediateContext.Rasterizer.SetViewports(viewport);
+
+                // TODO: setup mesh here
 
                 //TODO: this should come from a Pin:
                 Matrix world = Matrix.RotationX(timeSinceStart) * Matrix.RotationY(timeSinceStart * 2) * Matrix.RotationZ(timeSinceStart * 3);
@@ -1060,6 +1056,8 @@ namespace VVVV.DX11.Nodes
         }
         */
 
+
+        /*
         private static OVR.D3D11.D3D11ConfigData GetConfigData(DX11RenderContext context, DX11SwapChain swapChain)
         {
             OVR.D3D11.D3D11ConfigData d3d11cfg = new OVR.D3D11.D3D11ConfigData();
@@ -1147,7 +1145,7 @@ namespace VVVV.DX11.Nodes
             eyeTexture[1].Header.RenderViewport = eyeRenderViewport[1];
             //}
         }
-
+        */
         /*
         private void configOVR(DX11RenderContext context)
         {
