@@ -551,18 +551,18 @@ namespace VVVV.DX11.Nodes
 
                 // ------------------------ OVR stuff ------------------------
 
-                var configData = GetConfigData(context, this.chain);
-                if (!ConfigEqualityComparer.Default.Equals(configData, this.configData))
-                {
-                    this.configData = configData;
-                    configOVR(context, configData, this.chain);
-                }
+                //var configData = GetConfigData(context, this.chain);
+                //if (!ConfigEqualityComparer.Default.Equals(configData, this.configData))
+                //{
+                //    this.configData = configData;
+                //    configOVR(context, configData, this.chain);
+                //}
 
                 // for testing purpose?
                 //OVR.FrameTiming ft = hmd.GetFrameTiming(frameindex);
                 //logger.Log(LogType.Debug, "Oculus:  FrameTiming.ThisFrameSeconds: " + ft.ThisFrameSeconds);
-
-                OVR.FrameTiming frameTiming = hmd.BeginFrameTiming(frameindex);
+                OVR.FrameTiming frameTiming = hmd.BeginFrameTiming(0);
+                //OVR.FrameTiming frameTiming = hmd.BeginFrameTiming(0);
                 calcViewProj(context);
 
 
@@ -617,14 +617,19 @@ namespace VVVV.DX11.Nodes
 
                     // ------------------------ OVR stuff ------------------------
 
+                    // BUG: frameTiming.TimewarpPointSeconds seems to be always 0 >> useless
                     oculus.ovr_WaitTillTime(frameTiming.TimewarpPointSeconds);
 
                     // TODO: implement timewarping here - maybe better in update() ?
 
                     // WaitUntilGpuIdle(); - would be nice here as stated in the oculus developer pdf
 
-                    hmd.ovrHmd_EndFrameTiming();
-                    frameindex++;
+
+                    // NOTE: 
+                    // hmd.ovrHmd_EndFrameTiming() will throw an error that can't be debugged... just don't call it - should work without
+
+                    //hmd.ovrHmd_EndFrameTiming();
+                    //frameindex++;
 
                     // ------------------------ OVR stuff ------------------------
 
@@ -671,9 +676,6 @@ namespace VVVV.DX11.Nodes
             settings.BackBuffer = this.FOutBackBuffer[0][context];
             settings.RenderWidth = this.FOutBackBuffer[0][context].Resource.Description.Width;
             settings.RenderHeight = this.FOutBackBuffer[0][context].Resource.Description.Height;
-            //settings.RenderWidth = 2364;
-            //settings.RenderHeight = 1461;     //too late here
-
 
             settings.ResourceSemantics.Clear();
             settings.CustomSemantics.Clear();
@@ -694,9 +696,6 @@ namespace VVVV.DX11.Nodes
             {
                 context.RenderTargetStack.PopViewport();
             }
-
-            hmd.EndFrame(eyeRenderPose, eyeTexture);
-
             
         }
         #endregion
@@ -790,6 +789,14 @@ namespace VVVV.DX11.Nodes
             sw.Stop();
             this.FOutPresent[0] = sw.Elapsed.TotalMilliseconds;
 
+
+            // ------------------------ OVR stuff ------------------------
+
+            //hmd.ovrHmd_EndFrameTiming();
+            //frameindex++;
+
+            // ------------------------ OVR stuff ------------------------
+
             this.FResized = false;
         }
 
@@ -812,59 +819,11 @@ namespace VVVV.DX11.Nodes
         #endregion
 
         #region OVR
-        /*
         private void initOVR()
         {
             logger.Log(LogType.Debug, "Oculus:  Starting Initialization");
-
-            startTime = DateTime.Now;
 
             oculus.Initialize();
-
-            // Use the head mounted display, if it's available, otherwise use the debug HMD.
-            int numberOfHeadMountedDisplays = oculus.Hmd_Detect();
-            if (numberOfHeadMountedDisplays > 0)
-                hmd = oculus.Hmd_Create(0);
-            else
-                hmd = oculus.Hmd_CreateDebug(OculusWrap.OVR.HmdType.DK2);
-
-            if (hmd == null)
-            {
-                logger.Log(LogType.Warning, "Oculus Rift not detected.");
-                return;
-            }
-            if (hmd.ProductName == string.Empty)
-                logger.Log(LogType.Warning, "The HMD is not enabled. There's a tear in the Rift");
-
-            // attach hmd
-            OVR.Recti destMirrorRect;
-            OVR.Recti sourceRenderTargetRect;
-            hmd.AttachToWindow(this.WindowHandle, out destMirrorRect, out sourceRenderTargetRect);
-
-            // Create a backbuffer that's the same size as the HMD's resolution.
-            this.backBufferSize.Width = hmd.Resolution.Width;
-            this.backBufferSize.Height = hmd.Resolution.Height;
-
-            eyeFov = new OVR.FovPort[]
-			{ 
-				hmd.DefaultEyeFov[0], 
-				hmd.DefaultEyeFov[1] 
-			};
-
-            eyeRenderDesc = new OVR.EyeRenderDesc[2];
-            eyeRenderDesc[0] = hmd.GetRenderDesc(OVR.EyeType.Left, eyeFov[0]);
-            eyeRenderDesc[1] = hmd.GetRenderDesc(OVR.EyeType.Right, eyeFov[1]);
-
-
-            isInitialized = true;
-            logger.Log(LogType.Debug, "Oculus:  Finished Initialization");
-        }
-        */
-
-        private void initOVR()
-        {
-            logger.Log(LogType.Debug, "Oculus:  Starting Initialization");
-
             startTime = DateTime.Now;
             frameindex = 0;
 
@@ -892,6 +851,25 @@ namespace VVVV.DX11.Nodes
 				hmd.DefaultEyeFov[1] 
 			};
 
+            //for (int eyeIndex = 0; eyeIndex < OVR.Eye_Count; eyeIndex++)
+            //{
+            //    OVR.EyeType eye = hmd.EyeRenderOrder[eyeIndex];
+            //    eyeRenderDesc[eyeIndex] = hmd.GetRenderDesc(eye, eyeFov[eyeIndex]);
+            //}
+
+            eyeRenderDesc = new OVR.EyeRenderDesc[2];
+            eyeRenderDesc[0] = hmd.GetRenderDesc(OVR.EyeType.Left, eyeFov[0]);
+            eyeRenderDesc[1] = hmd.GetRenderDesc(OVR.EyeType.Right, eyeFov[1]);
+
+            OVR.Sizei renderTargetSize = new OVR.Sizei();
+            renderTargetSize.Width = this.Width;
+            renderTargetSize.Height = this.Height;
+
+            eyeRenderViewport = new OVR.Recti[2];
+            eyeRenderViewport[0].Position = new OVR.Vector2i(0, 0);
+            eyeRenderViewport[0].Size = new OVR.Sizei(renderTargetSize.Width / 2, renderTargetSize.Height);
+            eyeRenderViewport[1].Position = new OVR.Vector2i((renderTargetSize.Width + 1) / 2, 0);
+            eyeRenderViewport[1].Size = eyeRenderViewport[0].Size;
 
             // Specify which head tracking capabilities to enable.
             hmd.SetEnabledCaps(OVR.HmdCaps.LowPersistence | OVR.HmdCaps.DynamicPrediction);
@@ -900,13 +878,70 @@ namespace VVVV.DX11.Nodes
             hmd.ConfigureTracking(OVR.TrackingCaps.ovrTrackingCap_Orientation | OVR.TrackingCaps.ovrTrackingCap_MagYawCorrection | OVR.TrackingCaps.ovrTrackingCap_Position, OVR.TrackingCaps.None);
 
 
+            createDistortionMesh();
+
             isInitialized = true;
             logger.Log(LogType.Debug, "Oculus:  Finished Initialization");
 
-            //configOVR();
+        }
+
+        private void createDistortionMesh()
+        {
+            for (int eyeIndex = 0; eyeIndex < OVR.Eye_Count; eyeIndex++)
+            {
+                OVR.EyeType eye = hmd.EyeRenderOrder[eyeIndex];
+
+                OVR.DistortionVertex[] dv;
+                ushort[] indexData;
+                bool result = hmd.CreateDistortionMesh(eye, eyeFov[eyeIndex], OVR.DistortionCaps.ovrDistortionCap_Chromatic, out indexData, out dv);
+
+                // TODO:
+                // Feed into mesh somehow...
+                DX11IndexedGeometry geom = new DX11IndexedGeometry(context);
+                geom.VertexBuffer = vbuffer;
+                geom.IndexBuffer = new DX11IndexBuffer(context, indexstream, false, true);
+                geom.InputLayout = Pos4Norm3Tex2Vertex.Layout;
+                geom.Topology = PrimitiveTopology.TriangleList;
+                geom.VerticesCount = vertices.Length;
+                geom.VertexSize = Pos4Norm3Tex2Vertex.VertexSize;
+
+                geom.HasBoundingBox = false;
+            }
 
         }
 
+        // as used in the simple plugin:
+        private void OutputDistortionMesh(ISpread<int> FMeshIndices, ISpread<float> FDistortionMesh, OVR.EyeType eye, OVR.FovPort eyeFov)
+        {
+            OVR.DistortionVertex[] dv;
+            ushort[] indexData;
+            bool result = hmd.CreateDistortionMesh(eye, eyeFov, OVR.DistortionCaps.ovrDistortionCap_Chromatic, out indexData, out dv);
+
+
+            //Mesh indices
+            FMeshIndices.SliceCount = indexData.Length;
+            for (int i = 0; i < indexData.Length; i++)
+            {
+                FMeshIndices[i] = indexData[i];
+            }
+            //Mesh Vertices
+            int elementCount = 10;
+            FDistortionMesh.SliceCount = dv.Length * elementCount;
+            for (int i = 0; i < dv.Length; i++)
+            {
+
+                FDistortionMesh[i * elementCount + 0] = dv[i].ScreenPosNDC.X;
+                FDistortionMesh[i * elementCount + 1] = dv[i].ScreenPosNDC.Y;
+                FDistortionMesh[i * elementCount + 2] = dv[i].TanEyeAnglesR.X;
+                FDistortionMesh[i * elementCount + 3] = dv[i].TanEyeAnglesR.Y;
+                FDistortionMesh[i * elementCount + 4] = dv[i].TanEyeAnglesG.X;
+                FDistortionMesh[i * elementCount + 5] = dv[i].TanEyeAnglesG.Y;
+                FDistortionMesh[i * elementCount + 6] = dv[i].TanEyeAnglesB.X;
+                FDistortionMesh[i * elementCount + 7] = dv[i].TanEyeAnglesB.Y;
+                FDistortionMesh[i * elementCount + 8] = dv[i].TimeWarpFactor;
+                FDistortionMesh[i * elementCount + 9] = dv[i].VignetteFactor;
+            }
+        }
 
         private void calcViewProj(DX11RenderContext context)
         {
@@ -919,6 +954,8 @@ namespace VVVV.DX11.Nodes
             //Viewport viewport = new Viewport(0, 0, 2364, 1461, 0.0f, 1.0f);
             eyeRenderPose = new OVR.Posef[2];
 
+
+            
             for (int eyeIndex = 0; eyeIndex < OVR.Eye_Count; eyeIndex++)
             {
                 OVR.EyeType eye = hmd.EyeRenderOrder[eyeIndex];
