@@ -42,6 +42,9 @@ namespace VVVV.DX11.Nodes
         [Input("Texture Count", DefaultValue = 1, Order = 4)]
         protected IDiffSpread<int> FInElementCount;
 
+        [Input("AA Samples per Pixel", DefaultEnumEntry = "1", EnumName = "DX11_AASamples", Order = 8)]
+        protected IDiffSpread<EnumEntry> FInAASamplesPerPixel;
+
         [Input("Clear", DefaultValue = 1, Order = 6)]
         protected ISpread<bool> FInClear;
 
@@ -88,7 +91,7 @@ namespace VVVV.DX11.Nodes
 
         public event DX11QueryableDelegate EndQuery;
 
-        protected SampleDescription sd = new SampleDescription(1, 0);
+        //protected SampleDescription sd = new SampleDescription(1, 0);
 
         protected List<DX11RenderContext> updateddevices = new List<DX11RenderContext>();
         protected List<DX11RenderContext> rendereddevices = new List<DX11RenderContext>();
@@ -129,7 +132,8 @@ namespace VVVV.DX11.Nodes
                 || this.FInElementCount.IsChanged
                 || this.FInMips.IsChanged
                 || this.FInDepthBuffer.IsChanged
-                || this.depthformatpin.IsChanged)
+                || this.depthformatpin.IsChanged
+                || this.FInAASamplesPerPixel.IsChanged)
             {
 
 
@@ -186,14 +190,43 @@ namespace VVVV.DX11.Nodes
             {
                 for (int i = 0; i < this.FInElementCount[0]; i++)
                 {
-                    var rt = new DX11RenderTarget2D(context, (int)this.FInSize[i].X, (int)this.FInSize[i].Y, new SampleDescription(1, 0), DeviceFormatHelper.GetFormat(this.FInFormat[i]), this.FInMips[i], 0, false, false);
-                    this.FOutTexture[i][context] = rt;
-                    if (this.FInDepthBuffer[0])
+                    int aacount = Convert.ToInt32(this.FInAASamplesPerPixel[i].Name);
+                    int aaquality = 0;
+
+                    if (aacount > 1)
                     {
-                        Format depthfmt = DeviceFormatHelper.GetFormat(this.depthformatpin[0].Name);
-                        var db = new DX11DepthStencil(context, (int)this.FInSize[i].X, (int)this.FInSize[i].Y, new SampleDescription(1, 0), depthfmt);
-                        this.FOutDepthTexture[i][context] = db;
+                        List<SampleDescription> sds = context.GetMultisampleFormatInfo(DeviceFormatHelper.GetFormat(this.FInFormat[i]));
+                        int maxlevels = sds[sds.Count - 1].Count;
+
+                        if (aacount > maxlevels)
+                        {
+                            FHost.Log(TLogType.Warning, "Multisample count too high for this format, reverted to: " + maxlevels);
+                            aacount = maxlevels;
+                        }
+                        SampleDescription sd = new SampleDescription(Convert.ToInt32(this.FInAASamplesPerPixel[0].Name), 0);
+
+                        var rt = new DX11RenderTarget2D(context, (int)this.FInSize[i].X, (int)this.FInSize[i].Y, sd, DeviceFormatHelper.GetFormat(this.FInFormat[i]), this.FInMips[i], 0, false, false);
+                        this.FOutTexture[i][context] = rt;
+                        if (this.FInDepthBuffer[0])
+                        {
+                            Format depthfmt = DeviceFormatHelper.GetFormat(this.depthformatpin[0].Name);
+                            var db = new DX11DepthStencil(context, (int)this.FInSize[i].X, (int)this.FInSize[i].Y, sd, depthfmt);
+                            this.FOutDepthTexture[i][context] = db;
+                        }
                     }
+                    else
+                    {
+                        var rt = new DX11RenderTarget2D(context, (int)this.FInSize[i].X, (int)this.FInSize[i].Y, new SampleDescription(1, 0), DeviceFormatHelper.GetFormat(this.FInFormat[i]), this.FInMips[i], 0, false, false);
+                        this.FOutTexture[i][context] = rt;
+                        if (this.FInDepthBuffer[0])
+                        {
+                            Format depthfmt = DeviceFormatHelper.GetFormat(this.depthformatpin[0].Name);
+                            var db = new DX11DepthStencil(context, (int)this.FInSize[i].X, (int)this.FInSize[i].Y, new SampleDescription(1, 0), depthfmt);
+                            this.FOutDepthTexture[i][context] = db;
+                        }
+                    }
+
+                    
                 }
             }
             this.updateddevices.Add(context);
