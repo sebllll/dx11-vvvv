@@ -45,6 +45,9 @@ namespace VVVV.DX11.Nodes
         [Input("AA Samples per Pixel", DefaultEnumEntry = "1", EnumName = "DX11_AASamples", Order = 8)]
         protected IDiffSpread<EnumEntry> FInAASamplesPerPixel;
 
+        [Input("AA Quality", Order = 9, Visibility = PinVisibility.Hidden, DefaultValue = 0)]
+        protected IDiffSpread<int> FInAAQuality;
+
         [Input("Clear", DefaultValue = 1, Order = 6)]
         protected ISpread<bool> FInClear;
 
@@ -101,8 +104,9 @@ namespace VVVV.DX11.Nodes
 
         #region Constructor
         [ImportingConstructor()]
-        public DX11TextureSpreadRendererNode(IPluginHost FHost, IIOFactory iofactory)
+        public DX11TextureSpreadRendererNode(IPluginHost Host, IIOFactory iofactory)
         {
+            FHost = Host;
             string ename = DX11EnumFormatHelper.NullDeviceFormats.GetEnumName(FormatSupport.RenderTarget);
 
             InputAttribute tattr = new InputAttribute("Target Format");
@@ -133,7 +137,8 @@ namespace VVVV.DX11.Nodes
                 || this.FInMips.IsChanged
                 || this.FInDepthBuffer.IsChanged
                 || this.depthformatpin.IsChanged
-                || this.FInAASamplesPerPixel.IsChanged)
+                || this.FInAASamplesPerPixel.IsChanged
+                || this.FInAAQuality.IsChanged)
             {
 
 
@@ -191,19 +196,28 @@ namespace VVVV.DX11.Nodes
                 for (int i = 0; i < this.FInElementCount[0]; i++)
                 {
                     int aacount = Convert.ToInt32(this.FInAASamplesPerPixel[i].Name);
-                    int aaquality = 0;
-
+                    int aaquality = this.FInAAQuality[i];
                     if (aacount > 1)
                     {
                         List<SampleDescription> sds = context.GetMultisampleFormatInfo(DeviceFormatHelper.GetFormat(this.FInFormat[i]));
-                        int maxlevels = sds[sds.Count - 1].Count;
-
+                        int maxlevels = sds[sds.Count -1].Count;
+                        
                         if (aacount > maxlevels)
                         {
                             FHost.Log(TLogType.Warning, "Multisample count too high for this format, reverted to: " + maxlevels);
                             aacount = maxlevels;
                         }
-                        SampleDescription sd = new SampleDescription(Convert.ToInt32(this.FInAASamplesPerPixel[0].Name), 0);
+
+                        int index = sds.FindIndex(p => p.Count == aacount);
+                        int maxQuality = sds[index].Quality -1;
+
+                        if (aaquality > maxQuality)
+                        {
+                            FHost.Log(TLogType.Warning, "Multisample quality too high for this format, reverted to: " + maxQuality);
+                            aaquality = maxQuality;
+                        }
+
+                        SampleDescription sd = new SampleDescription(aacount, aaquality);
 
                         var rt = new DX11RenderTarget2D(context, (int)this.FInSize[i].X, (int)this.FInSize[i].Y, sd, DeviceFormatHelper.GetFormat(this.FInFormat[i]), this.FInMips[i], 0, false, false);
                         this.FOutTexture[i][context] = rt;
