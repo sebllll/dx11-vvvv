@@ -19,26 +19,6 @@ namespace VVVV.DX11.Nodes.Layers
         }
     }
 
-    public class Field2<T>
-    {
-        public T Value { get; private set; }
-        public ISpread<T> Pin { get; private set; }
-        public bool Changed;
-
-        public Field2(ISpread<T> pin)
-        {
-            Pin = pin;
-        }
-
-        public bool HasChanged()
-        {
-            var newValue = Pin.SliceCount > 0 ? Pin[0] : default(T);
-            Changed = !newValue?.Equals(Value) ?? !Value?.Equals(newValue) ?? false;
-            Value = newValue;
-            return Changed;
-        }
-    }
-
     public static class FieldHelper
     {
         public static bool Changed<T>(this Field<T> field, ISpread<T> pin)
@@ -106,7 +86,10 @@ namespace VVVV.DX11.Nodes.Layers
         public bool HasChanged => NameField.HasChanged(Name[0]);
 
         public VarDeclaration GetGlobalVar(string[] reserved)
-            => new VarDeclaration(ShaderGraph.GetTypeName<Vector4>(), Name[0].GetUniqueName(reserved), DefaultValue[0].GetHLSLValue());
+        {
+            var name = Name[0].GetUniqueName(reserved); 
+            return new VarDeclaration(ShaderGraph.GetTypeName<Vector4>(), name, DefaultValue[0].GetHLSLValue(), $"bool color=true; String uiname=\"{name}\";");
+        }
 
         public void Evaluate(int SpreadMax)
         {
@@ -230,7 +213,7 @@ float {name}(float2 center, float radius, float2 samplePos)
         }
     }
 
-    [PluginInfo(Name = "Colorize", Category = ShaderGraph.Category, Version = ShaderGraph.DistanceField2DVersion)]
+    [PluginInfo(Name = "DF2DToColor", Category = ShaderGraph.Category)]
     public class Colorize2DDistanceField : ShaderNodeBase<Vector4>, IPluginEvaluate
     {
         [Input("Distance Field")]
@@ -274,8 +257,40 @@ float4 {name}(float d, float4 color, float4 backcolor)
         }
     }
 
-    [PluginInfo(Name = "Blend", Category = ShaderGraph.Category)]
-    public class Blend : ShaderNodeBase<Vector4>, IPluginEvaluate
+    [PluginInfo(Name = "IsInShape", Category = ShaderGraph.Category, Version = ShaderGraph.DistanceField2DVersion)]
+    public class ISIn2DDistanceField : ShaderNodeBase<float>, IPluginEvaluate
+    {
+        [Input("Distance Field")]
+        ISpread<IShaderNode<float>> DF;
+        IShaderNode<float> DFDefault = new Default<float>(nameof(DF));
+        Field<IShaderNode<float>> DFField = new Field<IShaderNode<float>>();
+
+        const string name = "IsIn2DDF";
+
+        public override IEnumerable<IShaderNode> NodeArguments
+        {
+            get
+            {
+                yield return DF[0] ?? DFDefault;
+            }
+        }
+
+        public override bool HasChanged => DFField.Changed(DF);
+
+        public ISIn2DDistanceField()
+            : base(
+                  name: name,
+                  code: $@"
+float {name}(float d)
+{{
+    return saturate(d * 500);
+}}")
+        {
+        }
+    }
+
+    [PluginInfo(Name = "Blend4Scalars", Category = ShaderGraph.Category)]
+    public class BlendPerChannel : ShaderNodeBase<Vector4>, IPluginEvaluate
     {
         [Input("Color")]
         ISpread<IShaderNode<Vector4>> Color;
@@ -291,6 +306,50 @@ float4 {name}(float d, float4 color, float4 backcolor)
         ISpread<IShaderNode<Vector4>> BlendFactor;
         IShaderNode<Vector4> BlendDefault = new Default<Vector4>(nameof(BlendFactor), new Vector4(0.0f, 0.0f, 0.0f, 0.0f));
         Field<IShaderNode<Vector4>> BlendField = new Field<IShaderNode<Vector4>>();
+
+        const string name = "Blend4Scalars";
+
+        public override IEnumerable<IShaderNode> NodeArguments
+        {
+            get
+            {
+                yield return Color[0] ?? ColorDefault;
+                yield return Color2[0] ?? Color2Default;
+                yield return BlendFactor[0] ?? BlendDefault;
+            }
+        }
+
+        public override bool HasChanged => ColorField.Changed(Color) || Color2Field.Changed(Color2) || BlendField.Changed(BlendFactor);
+
+        public BlendPerChannel()
+            : base(
+                  name: name,
+                  code: $@"
+float4 {name}(float4 color, float4 color2, float4 blend)
+{{
+    return lerp(color, color2, blend);
+}}")
+        {
+        }
+    }
+
+    [PluginInfo(Name = "Blend", Category = ShaderGraph.Category)]
+    public class Blend : ShaderNodeBase<Vector4>, IPluginEvaluate
+    {
+        [Input("Color")]
+        ISpread<IShaderNode<Vector4>> Color;
+        IShaderNode<Vector4> ColorDefault = new Default<Vector4>(nameof(Color), new Vector4(0.21f, 0.65f, 0f, 1f));
+        Field<IShaderNode<Vector4>> ColorField = new Field<IShaderNode<Vector4>>();
+
+        [Input("Color 2")]
+        ISpread<IShaderNode<Vector4>> Color2;
+        IShaderNode<Vector4> Color2Default = new Default<Vector4>(nameof(Color2), new Vector4(0.05f, 0.05f, 0.05f, 0.8f));
+        Field<IShaderNode<Vector4>> Color2Field = new Field<IShaderNode<Vector4>>();
+
+        [Input("Blend")]
+        ISpread<IShaderNode<float>> BlendFactor;
+        IShaderNode<float> BlendDefault = new Default<float>(nameof(BlendFactor), 0.0f);
+        Field<IShaderNode<float>> BlendField = new Field<IShaderNode<float>>();
 
         const string name = "Blend";
 
@@ -310,7 +369,7 @@ float4 {name}(float d, float4 color, float4 backcolor)
             : base(
                   name: name,
                   code: $@"
-float4 {name}(float4 color, float4 color2, float4 blend)
+float4 {name}(float4 color, float4 color2, float blend)
 {{
     return lerp(color, color2, blend);
 }}")

@@ -57,7 +57,7 @@ namespace VVVV.DX11.Nodes.Layers
         { 
             var declarations = "";
             var pscode = @"
-    float4 col = cAmb;
+    float4 col = float4(1, 1, 1, 1);
     return col;";
 
             if (FShaderProvider.SliceCount > 0 && FShaderProvider[0] != null)
@@ -90,7 +90,6 @@ cbuffer cbPerDraw : register(b0)
 cbuffer cbPerObj : register(b1)
 {
     float4x4 tW : WORLD;
-    float4 cAmb < bool color = true; String uiname = ""Color"";> = { 1.0f,1.0f,1.0f,1.0f };
 };
 
 struct VS_IN

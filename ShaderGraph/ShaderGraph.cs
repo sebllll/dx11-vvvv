@@ -54,18 +54,23 @@ namespace ShaderGraphExperiment
 
     public struct VarDeclaration
     {
-        public VarDeclaration(string type, string identifier, string rightHandSide)
+        public VarDeclaration(string type, string identifier, string rightHandSide, string annotations = null)
         {
             Type = type;
             Identifier = identifier;
             RightHandSide = rightHandSide;
+            Annotations = annotations;
         }
 
         public string Type;
         public string Identifier;
         public string RightHandSide;
+        public string Annotations;
 
-        public override string ToString() => $"{Type} {Identifier} = {RightHandSide};";
+        public override string ToString() =>
+            Annotations != null ?
+                $"{Type} {Identifier} <{Annotations}> = {RightHandSide};" :
+                $"{Type} {Identifier} = {RightHandSide};";
     }
 
     public class Default<T> : IGlobalVarNode<T>

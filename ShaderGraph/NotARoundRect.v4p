@@ -1,0 +1,187 @@
+<!DOCTYPE PATCH  SYSTEM "http://vvvv.org/versions/vvvv50beta35.2.dtd" >
+   <PATCH nodename="E:\dev\dx11-vvvv\ShaderGraph\NotARoundRect.v4p" systemname="NotARoundRect" filename="E:\dev\dx11-vvvv\ShaderGraph\NotARoundRect.v4p" scrollx="0" scrolly="405">
+   <BOUNDS type="Window" left="750" top="1005" width="6180" height="7140">
+   </BOUNDS>
+   <NODE systemname="Renderer (DX11)" filename="%VVVV%\packs\dx11\nodes\plugins\VVVV.DX11.Nodes.dll" nodename="Renderer (DX11)" componentmode="InAWindow" id="1">
+   <BOUNDS type="Node" left="1245" top="4125" width="100" height="100">
+   </BOUNDS>
+   <BOUNDS type="Box" left="1245" top="4125" width="6000" height="4500">
+   </BOUNDS>
+   <BOUNDS type="Window" left="6990" top="525" width="8025" height="7815">
+   </BOUNDS>
+   <PIN pinname="Layers" visible="1" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="View" visible="1" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Projection" visible="1" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Background Color" slicecount="1" values="|0.64411,0.64411,0.64411,1.00000|">
+   </PIN>
+   <PIN pinname="VSync" slicecount="1" values="1">
+   </PIN>
+   </NODE>
+   <NODE systemname="Grid (DX11.Geometry)" filename="%VVVV%\packs\dx11\nodes\plugins\VVVV.DX11.Nodes.dll" nodename="Grid (DX11.Geometry)" componentmode="Hidden" id="2">
+   <BOUNDS type="Node" left="1815" top="2670" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="Geometry Out" visible="1">
+   </PIN>
+   </NODE>
+   <PACK Name="addonpack" Version="35.0.0">
+   </PACK>
+   <NODE systemname="LFO (Animation)" nodename="LFO (Animation)" componentmode="Hidden" id="13">
+   <BOUNDS type="Node" left="2610" top="1740" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="Output" visible="1">
+   </PIN>
+   <PIN pinname="Period" slicecount="1" visible="1" values="10">
+   </PIN>
+   </NODE>
+   <NODE systemname="Map (Value)" nodename="Map (Value)" componentmode="Hidden" id="25">
+   <BOUNDS type="Node" left="2625" top="2625" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="Input" visible="1">
+   </PIN>
+   <PIN pinname="Output" visible="1">
+   </PIN>
+   <PIN pinname="Destination Maximum" slicecount="1" visible="1" values="0.7">
+   </PIN>
+   <PIN pinname="Destination Minimum" slicecount="1" visible="1" values="0.23">
+   </PIN>
+   </NODE>
+   <NODE systemname="WaveShaper (Value)" nodename="WaveShaper (Value)" componentmode="Hidden" id="26">
+   <BOUNDS type="Node" left="2610" top="2175" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="Input" visible="1">
+   </PIN>
+   <PIN pinname="Output" visible="1">
+   </PIN>
+   <PIN pinname="Shape" slicecount="1" values="Sine">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="13" srcpinname="Output" dstnodeid="26" dstpinname="Input">
+   </LINK>
+   <LINK srcnodeid="26" srcpinname="Output" dstnodeid="25" dstpinname="Input">
+   </LINK>
+   <NODE systemname="Blend (DX11.RenderState)" filename="%VVVV%\packs\dx11\nodes\plugins\VVVV.DX11.Nodes.dll" nodename="Blend (DX11.RenderState)" componentmode="Hidden" id="43">
+   <BOUNDS type="Node" left="735" top="2760" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="Render State" visible="1" slicecount="1" values="||">
+   </PIN>
+   <PIN pinname="Mode" slicecount="1" values="Blend">
+   </PIN>
+   </NODE>
+   <NODE systemname="patchMeTheShaderExperimental" filename="patchMeTheShaderExperimental.v4p" componentmode="Hidden" id="54" nodename="patchMeTheShaderExperimental.v4p">
+   <BOUNDS type="Node" left="2880" top="5925" width="100" height="100">
+   </BOUNDS>
+   <BOUNDS type="Box" left="2880" top="5925" width="4800" height="3600">
+   </BOUNDS>
+   <BOUNDS type="Window" left="15270" top="2610" width="8925" height="9780">
+   </BOUNDS>
+   </NODE>
+   <NODE systemname="CircleQuadIntersection (DX11.Effect)" filename="dx11\CircleQuadIntersection.fx" nodename="CircleQuadIntersection (DX11.Effect)" componentmode="Hidden" id="57">
+   <BOUNDS type="Node" left="1425" top="3180" width="2625" height="270">
+   </BOUNDS>
+   <PIN pinname="Thickness" slicecount="1" values="0.01">
+   </PIN>
+   <PIN pinname="Transform In" visible="1">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="2" srcpinname="Geometry Out" dstnodeid="57" dstpinname="Geometry">
+   </LINK>
+   <LINK srcnodeid="13" srcpinname="Output" dstnodeid="57" dstpinname="hgfik">
+   </LINK>
+   <LINK srcnodeid="25" srcpinname="Output" dstnodeid="57" dstpinname="Radius">
+   </LINK>
+   <LINK srcnodeid="25" srcpinname="Output" dstnodeid="57" dstpinname="CircleRadius">
+   </LINK>
+   <LINK srcnodeid="57" srcpinname="Layer" dstnodeid="1" dstpinname="Layers">
+   </LINK>
+   <LINK srcnodeid="43" srcpinname="Render State" dstnodeid="57" dstpinname="Render State">
+   </LINK>
+   <NODE systemname="RectangleSpread (Spreads 2d)" filename="%VVVV%\lib\packs\VL.CoreLib.VVVV.0.49.63-g3a681d5a96\vvvv\nodes\vl\VVVV.Spreads.vl" nodename="RectangleSpread (Spreads 2d)" componentmode="Hidden" id="58">
+   <BOUNDS type="Node" left="1035" top="1095" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="OutputXY" visible="1">
+   </PIN>
+   <PIN pinname="SizeXY" slicecount="2" values="1.98,1.98">
+   </PIN>
+   </NODE>
+   <NODE systemname="xyZ (3d XY)" nodename="xyZ (3d XY)" componentmode="Hidden" id="59">
+   <BOUNDS type="Node" left="1110" top="1665" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="XY" visible="1">
+   </PIN>
+   <PIN pinname="XYZ" visible="1">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="58" srcpinname="OutputXY" dstnodeid="59" dstpinname="XY">
+   </LINK>
+   <NODE systemname="Translate (Transform Vector)" nodename="Translate (Transform Vector)" componentmode="Hidden" id="60">
+   <BOUNDS type="Node" left="675" top="2055" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="XYZ" visible="1">
+   </PIN>
+   <PIN pinname="Transform Out" visible="1">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="59" srcpinname="XYZ" dstnodeid="60" dstpinname="XYZ">
+   </LINK>
+   <LINK srcnodeid="60" srcpinname="Transform Out" dstnodeid="57" dstpinname="Transform In">
+   </LINK>
+   <NODE systemname="LinearSpread (Spreads)" nodename="LinearSpread (Spreads)" componentmode="Hidden" id="62">
+   <BOUNDS type="Node" left="3420" top="1110" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="Output" visible="1">
+   </PIN>
+   <PIN pinname="Input" slicecount="1" values="3">
+   </PIN>
+   <PIN pinname="Spread Count" slicecount="1" values="8">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="62" srcpinname="Output" dstnodeid="13" dstpinname="Period">
+   </LINK>
+   <NODE systemname="RandomSpread (Spreads)" nodename="RandomSpread (Spreads)" componentmode="Hidden" id="63">
+   <BOUNDS type="Node" left="4200" top="2040" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="Input" slicecount="1" values="0.7">
+   </PIN>
+   <PIN pinname="Spread Count" slicecount="1" values="8">
+   </PIN>
+   <PIN pinname="Width" slicecount="1" values="0.25">
+   </PIN>
+   <PIN pinname="Output" visible="1">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="63" srcpinname="Output" dstnodeid="25" dstpinname="Destination Maximum">
+   </LINK>
+   <NODE systemname="RandomSpread (Spreads)" nodename="RandomSpread (Spreads)" componentmode="Hidden" id="64">
+   <BOUNDS type="Node" left="4500" top="2340" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="Input" slicecount="1" values="0.23">
+   </PIN>
+   <PIN pinname="Spread Count" slicecount="1" values="8">
+   </PIN>
+   <PIN pinname="Width" slicecount="1" values="0.25">
+   </PIN>
+   <PIN pinname="Output" visible="1">
+   </PIN>
+   <PIN pinname="Random Seed" slicecount="1" values="2">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="64" srcpinname="Output" dstnodeid="25" dstpinname="Destination Minimum">
+   </LINK>
+   <NODE systemname="Camera (Transform Softimage)" filename="%VVVV%\lib\packs\VL.EditingFramework.0.49.63-g3a681d5a96\vvvv\nodes\modules\Camera (Transform Softimage).v4p" nodename="Camera (Transform Softimage)" componentmode="Hidden" id="65">
+   <BOUNDS type="Node" left="2655" top="3750" width="100" height="100">
+   </BOUNDS>
+   <PIN pinname="Initial Distance" slicecount="1" values="3.55">
+   </PIN>
+   <PIN pinname="Initial Longitude" slicecount="1" values="-0.08">
+   </PIN>
+   <PIN pinname="Initial FOV" slicecount="1" values="0.17">
+   </PIN>
+   </NODE>
+   <LINK srcnodeid="65" srcpinname="View" dstnodeid="1" dstpinname="View">
+   </LINK>
+   <LINK srcnodeid="65" srcpinname="Projection" dstnodeid="1" dstpinname="Projection">
+   </LINK>
+   </PATCH>
