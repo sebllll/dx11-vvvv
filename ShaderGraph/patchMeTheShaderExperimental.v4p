@@ -3,7 +3,7 @@
    <BOUNDS type="Window" left="15270" top="2610" width="8925" height="9780">
    </BOUNDS>
    <NODE systemname="Vector2 (DX11.ShaderGraph)" filename="bin\Debug\ShaderGraph.dll" nodename="Vector2 (DX11.ShaderGraph)" componentmode="Hidden" id="19">
-   <BOUNDS type="Node" left="3375" top="1140" width="100" height="100">
+   <BOUNDS type="Node" left="3375" top="540" width="100" height="100">
    </BOUNDS>
    <PIN pinname="Var Name" slicecount="1" values="Center">
    </PIN>
@@ -13,11 +13,11 @@
    </PIN>
    <PIN pinname="Default ValueXY" slicecount="2" values="0.5,0.5">
    </PIN>
-   <BOUNDS type="Box" left="3375" top="1140">
+   <BOUNDS type="Box" left="3375" top="540">
    </BOUNDS>
    </NODE>
    <NODE systemname="Circular (DX11.ShaderGraph DistanceField2D)" filename="bin\Debug\ShaderGraph.dll" nodename="Circular (DX11.ShaderGraph DistanceField2D)" componentmode="Hidden" id="17">
-   <BOUNDS type="Node" left="4485" top="1605" width="100" height="100">
+   <BOUNDS type="Node" left="4485" top="1305" width="100" height="100">
    </BOUNDS>
    <PIN pinname="Output" visible="1">
    </PIN>
@@ -27,7 +27,7 @@
    </PIN>
    </NODE>
    <NODE id="16" systemname="Float (DX11.ShaderGraph)" filename="bin\Debug\ShaderGraph.dll" nodename="Float (DX11.ShaderGraph)" componentmode="Hidden">
-   <BOUNDS type="Node" left="5205" top="1140" width="100" height="100">
+   <BOUNDS type="Node" left="5205" top="540" width="100" height="100">
    </BOUNDS>
    <PIN pinname="Output" visible="1">
    </PIN>
@@ -37,11 +37,11 @@
    </PIN>
    <PIN pinname="Default Value" slicecount="1" values="0.24">
    </PIN>
-   <BOUNDS type="Box" left="5205" top="1140">
+   <BOUNDS type="Box" left="5205" top="540">
    </BOUNDS>
    </NODE>
    <NODE systemname="Outline (DX11.ShaderGraph DistanceField2D)" filename="bin\Debug\ShaderGraph.dll" nodename="Outline (DX11.ShaderGraph DistanceField2D)" componentmode="Hidden" id="15">
-   <BOUNDS type="Node" left="3675" top="2685" width="100" height="100">
+   <BOUNDS type="Node" left="2970" top="2685" width="100" height="100">
    </BOUNDS>
    <PIN pinname="Input" visible="1" slicecount="1" values="||">
    </PIN>
@@ -67,7 +67,7 @@
    <LINK srcnodeid="14" srcpinname="Output" dstnodeid="15" dstpinname="Radius">
    </LINK>
    <NODE systemname="Quadratic (DX11.ShaderGraph DistanceField2D)" filename="bin\Debug\ShaderGraph.dll" nodename="Quadratic (DX11.ShaderGraph DistanceField2D)" componentmode="Hidden" id="11">
-   <BOUNDS type="Node" left="3375" top="1635" width="100" height="100">
+   <BOUNDS type="Node" left="3375" top="1335" width="100" height="100">
    </BOUNDS>
    <PIN pinname="Output" visible="1">
    </PIN>
@@ -77,7 +77,7 @@
    </PIN>
    </NODE>
    <NODE systemname="Color (DX11.ShaderGraph)" filename="bin\Debug\ShaderGraph.dll" nodename="Color (DX11.ShaderGraph)" componentmode="Hidden" id="10">
-   <BOUNDS type="Node" left="1905" top="2715" width="100" height="100">
+   <BOUNDS type="Node" left="3465" top="3135" width="100" height="100">
    </BOUNDS>
    <PIN pinname="Output" visible="1">
    </PIN>
@@ -87,7 +87,7 @@
    </PIN>
    </NODE>
    <NODE systemname="Color (DX11.ShaderGraph)" filename="bin\Debug\ShaderGraph.dll" nodename="Color (DX11.ShaderGraph)" componentmode="Hidden" id="9">
-   <BOUNDS type="Node" left="2730" top="2730" width="100" height="100">
+   <BOUNDS type="Node" left="4005" top="3135" width="100" height="100">
    </BOUNDS>
    <PIN pinname="Output" visible="1">
    </PIN>
@@ -101,7 +101,7 @@
    <LINK srcnodeid="19" srcpinname="Output" dstnodeid="17" dstpinname="Center">
    </LINK>
    <NODE id="8" systemname="Float (DX11.ShaderGraph)" filename="bin\Debug\ShaderGraph.dll" nodename="Float (DX11.ShaderGraph)" componentmode="Hidden">
-   <BOUNDS type="Node" left="4155" top="1140" width="100" height="100">
+   <BOUNDS type="Node" left="4155" top="540" width="100" height="100">
    </BOUNDS>
    <PIN pinname="Output" visible="1">
    </PIN>
@@ -111,13 +111,13 @@
    </PIN>
    <PIN pinname="Default Value" slicecount="1" values="0.48">
    </PIN>
-   <BOUNDS type="Box" left="4155" top="1140">
+   <BOUNDS type="Box" left="4155" top="540">
    </BOUNDS>
    </NODE>
    <LINK srcnodeid="8" srcpinname="Output" dstnodeid="11" dstpinname="Radius">
    </LINK>
    <NODE systemname="Intersect (DX11.ShaderGraph DistanceField2D)" filename="bin\Debug\ShaderGraph.dll" nodename="Intersect (DX11.ShaderGraph DistanceField2D)" componentmode="Hidden" id="7">
-   <BOUNDS type="Node" left="3780" top="2130" width="100" height="100">
+   <BOUNDS type="Node" left="3780" top="1980" width="100" height="100">
    </BOUNDS>
    <PIN pinname="Input" visible="1" slicecount="1" values="||">
    </PIN>
@@ -155,11 +155,11 @@
    </PIN>
    </NODE>
    <NODE systemname="Color (DX11.ShaderGraph)" filename="bin\Debug\ShaderGraph.dll" nodename="Color (DX11.ShaderGraph)" componentmode="Hidden" id="4">
-   <BOUNDS type="Node" left="3870" top="3915" width="100" height="100">
+   <BOUNDS type="Node" left="2145" top="4110" width="100" height="100">
    </BOUNDS>
    <PIN pinname="Output" visible="1">
    </PIN>
-   <PIN pinname="Default Value" slicecount="1" values="|0.58480,0.58480,0.58480,0.00000|">
+   <PIN pinname="Default Value" slicecount="1" values="|0.43467,0.01209,0.41022,0.00000|">
    </PIN>
    <PIN pinname="Var Name" slicecount="1" values="BackColor">
    </PIN>
@@ -175,7 +175,7 @@
    </PIN>
    <PIN pinname="Color" visible="1" slicecount="1" values="||">
    </PIN>
-   <BOUNDS type="Node" left="1740" top="3345" width="100" height="100">
+   <BOUNDS type="Node" left="2985" top="3750" width="100" height="100">
    </BOUNDS>
    <PIN pinname="Output" visible="1">
    </PIN>
@@ -207,10 +207,6 @@
    <LINK srcnodeid="5" srcpinname="Output" dstnodeid="1" dstpinname="Distance Field">
    </LINK>
    <LINK srcnodeid="1" srcpinname="Output" dstnodeid="6" dstpinname="Blend">
-   </LINK>
-   <LINK srcnodeid="4" srcpinname="Output" dstnodeid="6" dstpinname="Color 2">
-   </LINK>
-   <LINK srcnodeid="2" srcpinname="Output" dstnodeid="6" dstpinname="Color">
    </LINK>
    <NODE nodename="IOBox (String)" componentmode="InABox" id="21" systemname="IOBox (String)">
    <BOUNDS type="Box" left="1050" top="6135" width="3135" height="1950">
@@ -272,24 +268,6 @@
    <PIN pinname="Geometry Out" visible="1">
    </PIN>
    </NODE>
-   <NODE systemname="PixelShader (DX11.ShaderGraph)" filename="bin\Debug\ShaderGraph.dll" nodename="PixelShader (DX11.ShaderGraph)" componentmode="Hidden" id="27">
-   <BOUNDS type="Node" left="3675" top="5280" width="2625" height="270">
-   </BOUNDS>
-   <PIN pinname="Render State" visible="1">
-   </PIN>
-   <PIN pinname="CircleRadius" slicecount="1" values="0.52">
-   </PIN>
-   </NODE>
-   <LINK srcnodeid="6" srcpinname="Output" dstnodeid="27" dstpinname="Shader">
-   </LINK>
-   <LINK srcnodeid="27" srcpinname="Shader Code" dstnodeid="21" dstpinname="Input String">
-   </LINK>
-   <LINK srcnodeid="23" srcpinname="Y Output Value" dstnodeid="27" dstpinname="Apply Shader">
-   </LINK>
-   <LINK srcnodeid="27" srcpinname="Layer" dstnodeid="25" dstpinname="Layers">
-   </LINK>
-   <LINK srcnodeid="26" srcpinname="Geometry Out" dstnodeid="27" dstpinname="Geometry">
-   </LINK>
    <NODE systemname="Blend (DX11.RenderState)" filename="%VVVV%\packs\dx11\nodes\plugins\VVVV.DX11.Nodes.dll" nodename="Blend (DX11.RenderState)" componentmode="Hidden" id="28">
    <BOUNDS type="Node" left="2205" top="4875" width="100" height="100">
    </BOUNDS>
@@ -298,8 +276,6 @@
    <PIN pinname="Mode" slicecount="1" values="Blend">
    </PIN>
    </NODE>
-   <LINK srcnodeid="28" srcpinname="Render State" dstnodeid="27" dstpinname="Render State">
-   </LINK>
    <NODE systemname="AspectRatio (Transform)" nodename="AspectRatio (Transform)" componentmode="Hidden" id="30">
    <BOUNDS type="Node" left="7125" top="5820" width="100" height="100">
    </BOUNDS>
@@ -313,5 +289,27 @@
    </PIN>
    </NODE>
    <LINK srcnodeid="30" srcpinname="Transform Out" dstnodeid="25" dstpinname="Aspect Ratio">
+   </LINK>
+   <PACK Name="vvvv-Message" Version="2.9.0">
+   </PACK>
+   <LINK srcnodeid="4" srcpinname="Output" dstnodeid="6" dstpinname="Color">
+   </LINK>
+   <LINK srcnodeid="2" srcpinname="Output" dstnodeid="6" dstpinname="Color 2">
+   </LINK>
+   <NODE systemname="PixelShader (DX11.ShaderGraph)" filename="bin\Debug\ShaderGraph.dll" nodename="PixelShader (DX11.ShaderGraph)" componentmode="Hidden" id="35">
+   <BOUNDS type="Node" left="3675" top="5280" width="2625" height="270">
+   </BOUNDS>
+   </NODE>
+   <LINK srcnodeid="6" srcpinname="Output" dstnodeid="35" dstpinname="Shader">
+   </LINK>
+   <LINK srcnodeid="35" srcpinname="Shader Code" dstnodeid="21" dstpinname="Input String">
+   </LINK>
+   <LINK srcnodeid="23" srcpinname="Y Output Value" dstnodeid="35" dstpinname="Apply Shader">
+   </LINK>
+   <LINK srcnodeid="35" srcpinname="Layer" dstnodeid="25" dstpinname="Layers">
+   </LINK>
+   <LINK srcnodeid="26" srcpinname="Geometry Out" dstnodeid="35" dstpinname="Geometry">
+   </LINK>
+   <LINK srcnodeid="28" srcpinname="Render State" dstnodeid="35" dstpinname="Render State">
    </LINK>
    </PATCH>

@@ -283,7 +283,7 @@ float4 {name}(float d, float4 color, float4 backcolor)
                   code: $@"
 float {name}(float d)
 {{
-    return saturate(d * 500);
+    return saturate(-d * 500);
 }}")
         {
         }

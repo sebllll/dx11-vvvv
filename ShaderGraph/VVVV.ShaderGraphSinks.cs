@@ -17,11 +17,8 @@ namespace VVVV.DX11.Nodes.Layers
 	public class ShaderGraphPixelShader : DX11ShaderNode, IPartImportsSatisfiedNotification, IPluginEvaluate
     {
         [Input("Shader")]
-        public Pin<IFunctionNode<Vector4>> FShaderProvider; //=> FShaderIn as ISpread<IFunctionNode<float>>;
-        Field<IFunctionNode<Vector4>> ShaderField = new Field<IFunctionNode<Vector4>>();
-
-        //public INodeIn FShaderIn;
-        //static IGlobalVarNode<float> RadiusDefault = new Default<float>("Default Color", 0.5f);
+        public Pin<IFunctionNode<Vector4>> FShaderProvider; 
+        Field<IFunctionNode<Vector4>> ShaderField = new Field<IFunctionNode<Vector4>>();        
 
         [Input("Apply Shader")]
         public ISpread<bool> FApply;
