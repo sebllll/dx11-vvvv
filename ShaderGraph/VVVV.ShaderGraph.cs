@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using FeralTic.DX11;
 using ShaderGraphExperiment;
-using SharpDX;
+using SlimDX;
+using SlimDX.Direct3D11;
 using VVVV.PluginInterfaces.V2;
 
 namespace VVVV.DX11.Nodes.Layers
@@ -48,6 +50,8 @@ namespace VVVV.DX11.Nodes.Layers
             Output.SliceCount = 1;
             Output[0] = this;
         }
+
+        public void SetEffectValue(EffectVariable sv, int i) => EffectVariableHelpers.Set(sv, (dynamic)DefaultValue[i]);
     }
 
     [PluginInfo(Name = "Float", Category = ShaderGraph.Category)]
@@ -96,6 +100,8 @@ namespace VVVV.DX11.Nodes.Layers
             Output.SliceCount = 1;
             Output[0] = this;
         }
+
+        public void SetEffectValue(EffectVariable sv, int i) => EffectVariableHelpers.Set(sv, DefaultValue[0]);
     }
 
     public abstract class ShaderNodeBase<T> : IFunctionNode<T>

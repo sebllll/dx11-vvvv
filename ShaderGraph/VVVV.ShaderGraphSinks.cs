@@ -6,11 +6,79 @@ using VVVV.PluginInterfaces.V2;
 using FeralTic.DX11;
 using System.Linq;
 using ShaderGraphExperiment;
-using SharpDX;
+using VVVV.DX11.Lib.Effects;
+using System;
+using System.Collections.Generic;
+using VVVV.DX11.Lib.Effects.Registries;
+using SlimDX;
+using VVVV.DX11.Internals.Effects.Pins;
+using SlimDX.Direct3D11;
+using VVVV.DX11.Internals.Effects;
 #endregion usings
 
 namespace VVVV.DX11.Nodes.Layers
 {
+    public class DX11ShaderGraphVarManager : DX11ShaderVariableManager, IDX11ShaderVariableManager
+    {
+        Func<ShaderTraverseResult> traverseResult;
+
+        public DX11ShaderGraphVarManager(IPluginHost host, IIOFactory iofactory, Func<ShaderTraverseResult> traverseResult)
+            : base(host, iofactory)
+        {
+            this.traverseResult = traverseResult;
+        }
+
+        protected override void CreatePin(EffectVariable var)
+        {
+            if (var.AsInterface() != null)
+            {
+                if (var.LinkClasses().Length == 0)
+                {
+                    if (var.GetVariableType().Description.Elements == 0)
+                    {
+                        /*InterfaceShaderPin ip = new InterfaceShaderPin(var, this.host, this.iofactory);
+                        ip.ParentEffect = this.shader.DefaultEffect;
+                        this.shaderpins.Add(var.Description.Name, ip);*/
+                    }
+
+                }
+                else
+                {
+                    RestrictedInterfaceShaderPin rp = new RestrictedInterfaceShaderPin();
+                    rp.Initialize(this.iofactory, var);
+                    rp.ParentEffect = this.shader.DefaultEffect;
+                    this.shaderpins.Add(var.Description.Name, rp);
+                }
+                return;
+            }
+
+            //Search for render variable first
+            if (ShaderPinFactory.IsRenderVariable(var))
+            {
+                IRenderVariable rv = ShaderPinFactory.GetRenderVariable(var, this.host, this.iofactory);
+                this.rendervariables.Add(rv.Name, rv);
+            }
+            else if (ShaderPinFactory.IsWorldRenderVariable(var))
+            {
+                IWorldRenderVariable wv = ShaderPinFactory.GetWorldRenderVariable(var, this.host, this.iofactory);
+                this.worldvariables.Add(wv.Name, wv);
+            }
+            else if (ShaderPinFactory.IsShaderPin(var))
+            {
+                IShaderPin sp = traverseResult().Pins[var.Description.Name];
+                sp.Initialize(iofactory, var);
+                if (sp != null) { this.shaderpins.Add(sp.Name, sp); }
+            }
+            else
+            {
+                if (var.Description.Semantic != "IMMUTABLE" && var.Description.Semantic != "")
+                {
+                    this.customvariables.Add(new DX11CustomRenderVariable(var));
+                }
+            }
+        }
+    }
+
     #region PluginInfo
     [PluginInfo(Name = "PixelShader", Category = ShaderGraph.Category)]
 	#endregion PluginInfo
@@ -30,6 +98,16 @@ namespace VVVV.DX11.Nodes.Layers
         public ShaderGraphPixelShader(IPluginHost host, IIOFactory factory)
         : base(host, factory)
         { }
+
+        ShaderTraverseResult traverseResult;
+
+        protected override IDX11ShaderVariableManager GetVarManager(IPluginHost host, IIOFactory iofactory)
+            => new DX11ShaderGraphVarManager(host, iofactory, () => this.traverseResult);        
+
+        void WriteEffectValue(string name, int slice)
+        {
+            
+        }
 
         public new void Evaluate(int SpreadMax)
         {
@@ -59,18 +137,18 @@ namespace VVVV.DX11.Nodes.Layers
 
             if (FShaderProvider.SliceCount > 0 && FShaderProvider[0] != null)
             {
-                var result = FShaderProvider[0].Traverse();
+                this.traverseResult = FShaderProvider[0].Traverse();
 
                 declarations = string.Join(@"
-", result.FunctionDeclarations.Values.Concat(result.GlobalVars.Select(gv => gv.Value.ToString())));
+", traverseResult.GlobalVars.Select(gv => gv.Value.ToString()).Concat(traverseResult.FunctionDeclarations.Values));
 
                 pscode = string.Join(@"
-    ", result.LocalDeclarations.Values) + $@"
-    return {result.LocalDeclarations[FShaderProvider[0]].Identifier};";
+    ", traverseResult.LocalDeclarations.Values) + $@"
+    return {traverseResult.LocalDeclarations[FShaderProvider[0]].Identifier};";
 ;
             }
 
-            var effectText =
+            var effectText = declarations +
 @" 
 SamplerState linearSampler: IMMUTABLE
 {
@@ -108,9 +186,6 @@ vs2ps VS(VS_IN input)
     output.TexCd = input.TexCd.xy;
     return output;
 }
-"
-    + declarations +
-@"
 
 float4 PS(vs2ps In): SV_Target
 {

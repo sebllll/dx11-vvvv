@@ -16,7 +16,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>..\Deploy\Debug\x86\packs\dx11\nodes\plugins\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -30,18 +30,13 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="SharpDX">
-      <HintPath>..\..\vs\vvvv_50beta35.2_x86\lib\packs\SharpDX.3.1.0\lib\net45\SharpDX.dll</HintPath>
-    </Reference>
-    <Reference Include="SharpDX.Mathematics">
-      <HintPath>..\..\vs\vvvv_50beta35.2_x86\packs\dx11\core\SharpDX.Mathematics.dll</HintPath>
-    </Reference>
     <Reference Include="SlimDX">
-      <HintPath>..\FeralTic\Dependencies\x86\SlimDX.dll</HintPath>
+      <HintPath>..\Dependencies\x86\SlimDX.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition.CodePlex">
       <HintPath>..\..\vs\vvvv_50beta35.2_x86\lib\core\System.ComponentModel.Composition.CodePlex.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -52,15 +47,19 @@
     <Reference Include="System.Xml" />
     <Reference Include="VVVV.Core">
       <HintPath>..\Dependencies\x86\VVVV.Core.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.Hosting">
       <HintPath>..\Dependencies\x86\VVVV.Hosting.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.PluginInterfaces">
       <HintPath>..\Dependencies\x86\VVVV.PluginInterfaces.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.Utils">
       <HintPath>..\Dependencies\x86\VVVV.Utils.dll</HintPath>
+      <Private>False</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -73,18 +72,22 @@
     <ProjectReference Include="..\Core\VVVV.DX11.Core\VVVV.DX11.Core.csproj">
       <Project>{71c0786d-2640-4e39-aa7b-83602f36f3a3}</Project>
       <Name>VVVV.DX11.Core</Name>
+      <Private>False</Private>
     </ProjectReference>
     <ProjectReference Include="..\Core\VVVV.DX11.Lib\VVVV.DX11.Lib.csproj">
       <Project>{c6ee17bb-1f48-44ea-8131-d299bc57748c}</Project>
       <Name>VVVV.DX11.Lib</Name>
+      <Private>False</Private>
     </ProjectReference>
     <ProjectReference Include="..\FeralTic\Core\FeralTic.csproj">
       <Project>{9ead0f44-e6aa-4363-be4d-d944c1d35044}</Project>
       <Name>FeralTic</Name>
+      <Private>False</Private>
     </ProjectReference>
     <ProjectReference Include="..\Nodes\VVVV.DX11.Nodes\VVVV.DX11.Nodes.csproj">
       <Project>{08972d1a-d674-4cc1-bf56-fdb04e5fe730}</Project>
       <Name>VVVV.DX11.Nodes</Name>
+      <Private>False</Private>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

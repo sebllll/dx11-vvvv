@@ -2,7 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using SharpDX;
+using FeralTic.DX11;
+using SlimDX;
+using SlimDX.Direct3D11;
+using VVVV.DX11.Internals.Effects.Pins;
+using VVVV.DX11.Nodes.Layers;
+using VVVV.PluginInterfaces.V2;
 
 namespace ShaderGraphExperiment
 {
@@ -46,6 +51,7 @@ namespace ShaderGraphExperiment
     public interface IGlobalVarNode : IShaderNode
     {
         VarDeclaration GetGlobalVar(string[] reserved);
+        void SetEffectValue(EffectVariable sv, int i);
     }
 
     public interface IGlobalVarNode<T> : IGlobalVarNode, IShaderNode<T>
@@ -93,6 +99,8 @@ namespace ShaderGraphExperiment
 
         public VarDeclaration GetGlobalVar(string[] reserved)
             => new VarDeclaration(ShaderGraph.GetTypeName<T>(), ShaderGraph.GetUniqueName(Name, reserved), Value.GetHLSLValue());
+
+        public void SetEffectValue(EffectVariable sv, int i) => EffectVariableHelpers.Set(sv, (dynamic)Value);
     }
 
     public class ShaderTraverseResult
@@ -100,11 +108,49 @@ namespace ShaderGraphExperiment
         public Dictionary<string, string> FunctionDeclarations = new Dictionary<string, string>();
         public Dictionary<IGlobalVarNode, VarDeclaration> GlobalVars = new Dictionary<IGlobalVarNode, VarDeclaration>();
         public Dictionary<IFunctionNode, VarDeclaration> LocalDeclarations = new Dictionary<IFunctionNode, VarDeclaration>();
+        public Dictionary<string, IShaderPin> Pins = new Dictionary<string, IShaderPin>(); 
 
         public string GetPhrase(IFunctionNode node) => LocalDeclarations[node].Identifier;
         public string GetPhrase(IMadeUpShaderNode node) => node.Phrase;
         public string GetPhrase(IGlobalVarNode node) => GlobalVars[node].Identifier;
         public string GetPhrase(IShaderNode node) => GetPhrase((dynamic)node);
+    }
+
+    public class ShaderGraphPin : IShaderPin
+    {
+        IGlobalVarNode node;
+
+        public ShaderGraphPin(IGlobalVarNode node)
+        {
+            this.node = node;
+        }
+
+        public string Name { get; private set; }
+        public int Elements { get; private set; }
+        public string TypeName { get; private set; }
+        public bool Constant => true;
+        public int SliceCount => 1;
+
+        public void Initialize(IIOFactory factory, EffectVariable variable)
+        {
+            this.TypeName = variable.GetVariableType().Description.TypeName;
+            this.Elements = variable.GetVariableType().Description.Elements;
+            this.Name = variable.Description.Name;
+        }
+
+        public Action<int> CreateAction(DX11ShaderInstance instance)
+        {
+            var sv = instance.Effect.GetVariableByName(this.Name);
+            return i => node.SetEffectValue(sv, i);
+        }
+
+        public void Update(EffectVariable variable)
+        {
+        }
+
+        public void Dispose()
+        {
+        }
     }
 
     public static class ShaderGraph
@@ -130,7 +176,9 @@ namespace ShaderGraphExperiment
             if (result.GlobalVars.ContainsKey(node))
                 return result;
 
-            result.GlobalVars[node] = node.GetGlobalVar(result.GlobalVars.Values.Select(gv => gv.Identifier).ToArray());
+            var globalVar = node.GetGlobalVar(result.GlobalVars.Values.Select(gv => gv.Identifier).ToArray());
+            result.GlobalVars[node] = globalVar;
+            result.Pins[globalVar.Identifier] = new ShaderGraphPin(node);
             return result;
         }
 
@@ -181,6 +229,8 @@ namespace ShaderGraphExperiment
         static string GetHLSLValue(Vector4 value) => $"float4({GetHLSLValue(value.X)}, {GetHLSLValue(value.Y)}, {GetHLSLValue(value.Z)}, {GetHLSLValue(value.W)})";
         static string GetHLSLValue(Color4 value) => $"float4({GetHLSLValue(value.Red)}, {GetHLSLValue(value.Green)}, {GetHLSLValue(value.Blue)}, {GetHLSLValue(value.Alpha)})";
         public static string GetHLSLValue<T>(this T value) => GetHLSLValue((dynamic)value);
+
+
 
     }
 }
