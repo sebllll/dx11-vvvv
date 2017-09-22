@@ -94,7 +94,7 @@ namespace VVVV.DX11.Nodes.Textures
             }
 
             this.FValid.SliceCount = SpreadMax;
-            this.FTextureOutput.SliceCount = SpreadMax;
+            //this.FTextureOutput.SliceCount = SpreadMax;
 
 
             if (this.FPointer.IsChanged)
@@ -103,13 +103,13 @@ namespace VVVV.DX11.Nodes.Textures
                 this.FTextureOutput.SafeDisposeAll();
             }
 
-            for (int i = 0; i < SpreadMax; i++)
-            {
-                if (this.FTextureOutput[i] == null)
-                {
-                    FTextureOutput[i] = new DX11Resource<T>();
-                }
-            }
+            //for (int i = 0; i < SpreadMax; i++)
+            //{
+            //    if (this.FTextureOutput[i] == null)
+            //    {
+            //        FTextureOutput[i] = new DX11Resource<T>();
+            //    }
+            //}
 
         }
 
@@ -117,18 +117,35 @@ namespace VVVV.DX11.Nodes.Textures
         {
             if (this.FInvalidate)
             {
-                for (int i = 0; i < FTextureOutput.SliceCount; i++)
+                this.FTextureOutput.SliceCount = 0;
+
+                for (int i = 0; i < FPointer.SliceCount; i++)
                 {
+
+                    this.FTextureOutput.SliceCount += 1;
+
+                    if (this.FTextureOutput[i] == null)
+                    {
+                        FTextureOutput[i] = new DX11Resource<T>();
+                    }
+
                     try
                     {
-                        IntPtr share = new IntPtr(FPointer[i]);
+                        
 
-                        this.FTextureOutput[i][context] = newTexture(context, share);
+                        IntPtr handle = new IntPtr(FPointer[i]);
+                        if (handle.ToInt32() < 0)
+                        {
+                            handle = IntPtr.Zero;
+                        }
+
+                        this.FTextureOutput[i][context] = newTexture(context, handle);
                         this.FValid[i] = true;
 
                     }
                     catch (Exception)
                     {
+                        //this.FTextureOutput.SliceCount = this.FTextureOutput.SliceCount - 1;
                         this.FValid[i] = false;
                     }
                 }

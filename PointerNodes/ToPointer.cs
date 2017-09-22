@@ -19,7 +19,7 @@ namespace VVVV.DX11.Nodes.Textures
     {
         public override long calcPointer(int i, DX11RenderContext context)
         {
-            return this.FTextureIn[i][context].Resource.ComPointer.ToInt64();
+            return this.FTextureIn[i][context].Resource.ComPointer.ToInt32();
         }
     }
 
@@ -37,7 +37,7 @@ namespace VVVV.DX11.Nodes.Textures
     {
         public override long calcPointer(int i, DX11RenderContext context)
         {
-            return this.FTextureIn[i][context].Resource.ComPointer.ToInt64();
+            return this.FTextureIn[i][context].Resource.ComPointer.ToInt32();
         }
     }
 
@@ -49,12 +49,15 @@ namespace VVVV.DX11.Nodes.Textures
         [Input("Texture In")]
         protected Pin<DX11Resource<T>> FTextureIn;
 
+        [Input("Apply", IsSingle = true, IsBang = true)]
+        protected ISpread<bool> FApply;
+
         [Output("Pointer", AsInt = true)]
         protected ISpread<long> FPointer;
 
         public void Evaluate(int SpreadMax)
         {
-            if (this.FTextureIn.PluginIO.IsConnected)
+            if (this.FTextureIn.PluginIO.IsConnected && FApply[0])
             {
 
                 if (this.RenderRequest != null) { this.RenderRequest(this, this.FHost); }
@@ -69,18 +72,25 @@ namespace VVVV.DX11.Nodes.Textures
                 DX11RenderContext context = this.AssignedContext;
 
 
-
                 for (int i = 0; i < SpreadMax; i++)
                 {
-                    if (this.FTextureIn[0].Contains(context))
+                    if (this.FTextureIn[i].Contains(context))
                     {
-                        FPointer[i] = calcPointer(i, context);
+                        try
+                        {
+                            FPointer[i] = calcPointer(i, context);
+                        }
+                        catch
+                        {
+                            FPointer[i] = 0;
+                        }
                     }
                     else
                     {
-                        FPointer[i] = -1;
+                        FPointer[i] = 0;
                     }
                 }
+
 
             }
             else
@@ -94,7 +104,7 @@ namespace VVVV.DX11.Nodes.Textures
 
         private void SetDefault(int i)
         {
-            FPointer[i] = -1;
+            FPointer[i] = 0;
         }
 
         public void Dispose()
