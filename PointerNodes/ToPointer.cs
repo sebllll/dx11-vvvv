@@ -14,16 +14,19 @@ using FeralTic.DX11;
 namespace VVVV.DX11.Nodes.Textures
 {
    
-    [PluginInfo(Name = "ToPointer", Category = "DX11.Texture", Version = "2d", Author = "vux,tonfilm")]
+    [PluginInfo(Name = "ToPointer", Category = "DX11.Texture", Version = "2d", Author = "sebl")]
     public class ToPointer2DNode : ToPointerGenericNode<DX11Texture2D>
     {
         public override long calcPointer(int i, DX11RenderContext context)
         {
-            return this.FTextureIn[i][context].Resource.ComPointer.ToInt32();
+            if (this.FTextureIn[i][context].Resource != null)
+                return this.FTextureIn[i][context].Resource.ComPointer.ToInt64();
+            else
+                return 0;
         }
     }
 
-    //[PluginInfo(Name = "ToPointer", Category = "DX11.Texture", Version = "Cube", Author = "vux,tonfilm")]
+    //[PluginInfo(Name = "ToPointer", Category = "DX11.Texture", Version = "Cube", Author = "sebl")]
     //public class ToPointerCubeNode : ToPointerGenericNode<DX11CubeRenderTarget>
     //{
     //    public override long calcPointer(int i, DX11RenderContext context)
@@ -32,16 +35,16 @@ namespace VVVV.DX11.Nodes.Textures
     //    }
     //}
 
-    [PluginInfo(Name = "ToPointer", Category = "DX11.Texture", Version = "3d", Author = "vux,tonfilm")]
+    [PluginInfo(Name = "ToPointer", Category = "DX11.Texture", Version = "3d", Author = "sebl")]
     public class ToPointer3DNode : ToPointerGenericNode<DX11Texture3D>
     {
         public override long calcPointer(int i, DX11RenderContext context)
         {
-            return this.FTextureIn[i][context].Resource.ComPointer.ToInt32();
+            return this.FTextureIn[i][context].Resource.ComPointer.ToInt64();
         }
     }
 
-    public abstract class ToPointerGenericNode<T> : IPluginEvaluate, IDX11ResourceDataRetriever, IDisposable where T : IDX11Resource
+    public abstract class ToPointerGenericNode<T> : IPluginEvaluate, IDX11ResourceDataRetriever where T : IDX11Resource
     {
         [Import()]
         protected IPluginHost FHost;
@@ -59,8 +62,10 @@ namespace VVVV.DX11.Nodes.Textures
         {
             if (this.FTextureIn.PluginIO.IsConnected && FApply[0])
             {
-
-                if (this.RenderRequest != null) { this.RenderRequest(this, this.FHost); }
+                if (this.RenderRequest != null)
+                {
+                    this.RenderRequest(this, this.FHost);
+                }
 
                 if (this.AssignedContext == null)
                 {
@@ -71,27 +76,24 @@ namespace VVVV.DX11.Nodes.Textures
 
                 DX11RenderContext context = this.AssignedContext;
 
-
                 for (int i = 0; i < SpreadMax; i++)
                 {
-                    if (this.FTextureIn[i].Contains(context))
+                    if (this.FTextureIn[i].Contains(context) )
                     {
-                        try
-                        {
+                        //try
+                        //{
                             FPointer[i] = calcPointer(i, context);
-                        }
-                        catch
-                        {
-                            FPointer[i] = 0;
-                        }
+                        //}
+                        //catch
+                        //{
+                        //    FPointer[i] = 0;
+                        //}
                     }
                     else
                     {
                         FPointer[i] = 0;
                     }
                 }
-
-
             }
             else
             {
@@ -99,18 +101,7 @@ namespace VVVV.DX11.Nodes.Textures
             }
         }
 
-        public abstract Int64 calcPointer(int i, DX11RenderContext context);
-
-
-        private void SetDefault(int i)
-        {
-            FPointer[i] = 0;
-        }
-
-        public void Dispose()
-        {
-            
-        }
+        public abstract long calcPointer(int i, DX11RenderContext context);
 
         public DX11RenderContext AssignedContext
         {
@@ -120,5 +111,5 @@ namespace VVVV.DX11.Nodes.Textures
 
         public event DX11RenderRequestDelegate RenderRequest;
     }
-    
+
 }

@@ -52,7 +52,7 @@ namespace VVVV.DX11.Nodes.Textures
     }
 
 
-    [PluginInfo(Name = "FromPointer", Category = "DX11.Texture", Version = "2d", Author = "vux")]
+    [PluginInfo(Name = "FromPointer", Category = "DX11.Texture", Version = "2d", Author = "sebl")]
     public class FromPointer2DNode : FromPointerGenericNode<DX11Texture2D>
     {
         public override DX11Texture2D newTexture(DX11RenderContext context, IntPtr handle)
@@ -61,7 +61,7 @@ namespace VVVV.DX11.Nodes.Textures
         }
     }
 
-    [PluginInfo(Name = "FromPointer", Category = "DX11.Texture", Version = "3d", Author = "vux")]
+    [PluginInfo(Name = "FromPointer", Category = "DX11.Texture", Version = "3d", Author = "sebl")]
     public class FromPointer3DNode : FromPointerGenericNode<DX11Texture3D>
     {
         public override DX11Texture3D newTexture(DX11RenderContext context, IntPtr handle)
@@ -83,6 +83,7 @@ namespace VVVV.DX11.Nodes.Textures
 
         protected bool FInvalidate;
 
+
         public void Evaluate(int SpreadMax)
         {
             if (this.FPointer.SliceCount == 0)
@@ -94,24 +95,14 @@ namespace VVVV.DX11.Nodes.Textures
             }
 
             this.FValid.SliceCount = SpreadMax;
-            //this.FTextureOutput.SliceCount = SpreadMax;
-
 
             if (this.FPointer.IsChanged)
             {
                 this.FInvalidate = true;
                 this.FTextureOutput.SafeDisposeAll();
             }
-
-            //for (int i = 0; i < SpreadMax; i++)
-            //{
-            //    if (this.FTextureOutput[i] == null)
-            //    {
-            //        FTextureOutput[i] = new DX11Resource<T>();
-            //    }
-            //}
-
         }
+
 
         public void Update(DX11RenderContext context)
         {
@@ -121,7 +112,6 @@ namespace VVVV.DX11.Nodes.Textures
 
                 for (int i = 0; i < FPointer.SliceCount; i++)
                 {
-
                     this.FTextureOutput.SliceCount += 1;
 
                     if (this.FTextureOutput[i] == null)
@@ -131,27 +121,24 @@ namespace VVVV.DX11.Nodes.Textures
 
                     try
                     {
-                        
-
                         IntPtr handle = new IntPtr(FPointer[i]);
-                        if (handle.ToInt32() < 0)
+                        if (handle.ToInt64() < 0)
                         {
                             handle = IntPtr.Zero;
                         }
 
                         this.FTextureOutput[i][context] = newTexture(context, handle);
                         this.FValid[i] = true;
-
                     }
-                    catch (Exception)
+                    catch
                     {
-                        //this.FTextureOutput.SliceCount = this.FTextureOutput.SliceCount - 1;
                         this.FValid[i] = false;
                     }
                 }
                 this.FInvalidate = false;
             }
         }
+
 
         public abstract T newTexture(DX11RenderContext context, IntPtr handle);
 
@@ -160,6 +147,7 @@ namespace VVVV.DX11.Nodes.Textures
         {
             this.FTextureOutput.SafeDisposeAll(context);
         }
+
 
         public void Dispose()
         {
