@@ -54,9 +54,11 @@
     <Reference Include="System.Xml" />
     <Reference Include="VVVV.Core">
       <HintPath>..\Dependencies\x64\VVVV.Core.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.Hosting">
       <HintPath>..\Dependencies\x64\VVVV.Hosting.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.PluginInterfaces">
       <HintPath>..\Dependencies\x64\VVVV.PluginInterfaces.dll</HintPath>
