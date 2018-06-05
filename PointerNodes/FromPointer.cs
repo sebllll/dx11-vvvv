@@ -14,7 +14,7 @@ using SlimDX.Direct3D11;
 
 namespace VVVV.DX11.Nodes.Textures
 {
-    [PluginInfo(Name = "FromPointer", Category = "DX11.Texture", Version = "2d", Author = "sebl")]
+    [PluginInfo(Name = "FromPointer", Category = "DX11.Texture", Version = "2d", Author = "sebl", AutoEvaluate = true)]
     public class FromPointer2DNode : FromPointerGenericNode<DX11Texture2D>
     {
         public override DX11Texture2D newTexture(DX11RenderContext context, IntPtr handle)
@@ -23,7 +23,7 @@ namespace VVVV.DX11.Nodes.Textures
         }
     }
 
-    [PluginInfo(Name = "FromPointer", Category = "DX11.Texture", Version = "3d", Author = "sebl")]
+    [PluginInfo(Name = "FromPointer", Category = "DX11.Texture", Version = "3d", Author = "sebl", AutoEvaluate = true)]
     public class FromPointer3DNode : FromPointerGenericNode<DX11Texture3D>
     {
         public override DX11Texture3D newTexture(DX11RenderContext context, IntPtr handle)
@@ -63,6 +63,7 @@ namespace VVVV.DX11.Nodes.Textures
             {
                 this.FInvalidate = true;
                 this.FTextureOutput.SafeDisposeAll();
+
             }
 
             for (int i = 0; i < SpreadMax; i++)
@@ -72,12 +73,14 @@ namespace VVVV.DX11.Nodes.Textures
                     FTextureOutput[i] = new DX11Resource<T>();
                 }
             }
+
+
         }
 
 
         public void Update(DX11RenderContext context)
         {
-            if (this.FInvalidate)
+            if (this.FInvalidate && ((Pin<long>)this.FPointer).IsConnected)
             {
 
                 for (int i = 0; i < FPointer.SliceCount; i++)
@@ -108,13 +111,14 @@ namespace VVVV.DX11.Nodes.Textures
 
         public abstract T newTexture(DX11RenderContext context, IntPtr handle);
 
-
+        // when downstream connection is deleted
         public void Destroy(DX11RenderContext context, bool force)
         {
-            this.FTextureOutput.SafeDisposeAll(context);
+            // do nothing here, because that potentially breaks the graph
+            //this.FTextureOutput.SafeDisposeAll(context);
         }
 
-
+        // when node gets deleted or resetted
         public void Dispose()
         {
             this.FTextureOutput.SafeDisposeAll();

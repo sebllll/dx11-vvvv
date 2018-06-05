@@ -64,23 +64,24 @@ namespace FeralTic.DX11.Resources
             return result;
         }
 
-        public static DX11Texture3D_extension FromDescription(DX11RenderContext context, Texture3DDescription desc)
-        {
-            DX11Texture3D_extension result = new DX11Texture3D_extension(context);
-            result.context = context;
-            result.Resource = new Texture3D(context.Device, desc);
-            result.isowner = true;
-            result.desc = desc;
-            result.SRV = new ShaderResourceView(context.Device, result.Resource);
+        // is now a member of DX11Texture3D
+        //public static DX11Texture3D_extension FromDescription(DX11RenderContext context, Texture3DDescription desc)
+        //{
+        //    DX11Texture3D_extension result = new DX11Texture3D_extension(context);
+        //    result.context = context;
+        //    result.Resource = new Texture3D(context.Device, desc);
+        //    result.isowner = true;
+        //    result.desc = desc;
+        //    result.SRV = new ShaderResourceView(context.Device, result.Resource);
 
-            result.Format = desc.Format;
-            result.Width = desc.Width;
-            result.Height = desc.Height;
-            result.Depth = desc.Depth;
+        //    result.Format = desc.Format;
+        //    result.Width = desc.Width;
+        //    result.Height = desc.Height;
+        //    result.Depth = desc.Depth;
 
-            result.isowner = false; // isowner will not be taken into account by pipeline, yet
+        //    result.isowner = false; // isowner will not be taken into account by pipeline, yet
 
-            return result;
-        }
+        //    return result;
+        //}
     }
 }
