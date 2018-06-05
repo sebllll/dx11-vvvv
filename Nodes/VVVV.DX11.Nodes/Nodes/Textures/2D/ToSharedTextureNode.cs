@@ -13,7 +13,7 @@ using FeralTic.DX11;
 
 namespace VVVV.DX11.Nodes.Textures
 {
-    [PluginInfo(Name = "AsSharedTexture", Category = "DX11.Texture", Version = "2d", Author = "vux,tonfilm")]
+    [PluginInfo(Name = "AsSharedTexture", Category = "DX11.Texture", Version = "2d", Author = "vux,tonfilm", AutoEvaluate =true)]
     public class ToSharedTextureNode : IPluginEvaluate, IDX11ResourceDataRetriever, IDisposable
     {
         [Import()]
@@ -30,7 +30,7 @@ namespace VVVV.DX11.Nodes.Textures
 
         public void Evaluate(int SpreadMax)
         {
-            if (this.FTextureIn.PluginIO.IsConnected)
+            if (this.FTextureIn.IsConnected)
             {
 
                 if (this.RenderRequest != null) { this.RenderRequest(this, this.FHost); }

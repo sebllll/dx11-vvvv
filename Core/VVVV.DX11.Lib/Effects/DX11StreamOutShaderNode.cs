@@ -60,10 +60,10 @@ namespace VVVV.DX11.Nodes.Layers
         private InputElement[] elems;
 
         #region Default Input Pins
-        [Input("Geometry In", IsSingle=true, CheckIfChanged=true)]
+        [Input("Geometry In", IsSingle = true, CheckIfChanged = true)]
         protected Pin<DX11Resource<IDX11Geometry>> FIn;
 
-        [Input("View",Order = 10001, IsSingle = true)]
+        [Input("View", Order = 10001, IsSingle = true)]
         protected ISpread<Matrix> FInView;
 
         [Input("Projection", Order = 10002, IsSingle = true)]
@@ -109,7 +109,7 @@ namespace VVVV.DX11.Nodes.Layers
         {
             FOutPath.SliceCount = 1;
             FOutPath[0] = fileName;
-            
+
             if (isnew) { this.FShader = shader; }
 
             if (shader.IsCompiled)
@@ -201,7 +201,7 @@ namespace VVVV.DX11.Nodes.Layers
                 this.FOut[0] = new DX11Resource<IDX11Geometry>();
                 this.FOutBuffer[0] = new DX11Resource<DX11RawBuffer>();
             }
-            
+
             if (this.FInvalidate)
             {
                 if (this.FShader.IsCompiled)
@@ -268,7 +268,7 @@ namespace VVVV.DX11.Nodes.Layers
 
             if (!this.deviceshaderdata.Contains(context))
             {
-                this.deviceshaderdata[context]  = new DX11ShaderData(context, this.FShader);
+                this.deviceshaderdata[context] = new DX11ShaderData(context, this.FShader);
             }
             if (!this.shaderVariableCache.Contains(context))
             {
@@ -277,8 +277,8 @@ namespace VVVV.DX11.Nodes.Layers
 
             DX11ShaderData shaderdata = this.deviceshaderdata[context];
             shaderdata.Update(this.FInTechnique[0].Index, 0, this.FIn);
-            
-            bool customlayout = this.FInLayout.PluginIO.IsConnected || this.FInAutoLayout[0];
+
+            bool customlayout = this.FInLayout.IsConnected || this.FInAutoLayout[0];
             if (this.techniquechanged || this.FInLayout.IsChanged || this.FInAutoLayout.IsChanged)
             {
                 elems = null;
@@ -298,7 +298,7 @@ namespace VVVV.DX11.Nodes.Layers
                 this.layoutsize = size;
             }
 
-            if (this.FInEnabled[0] && this.FIn.PluginIO.IsConnected)
+            if (this.FInEnabled[0] && this.FIn.IsConnected)
             {
                 //Clear shader stages (important here)
                 shaderdata.ResetShaderStages(ctx);
@@ -311,7 +311,7 @@ namespace VVVV.DX11.Nodes.Layers
                 }
 
 
-                if (shaderdata.IsLayoutValid(0) && this.varmanager.SetGlobalSettings(shaderdata.ShaderInstance,this.settings))
+                if (shaderdata.IsLayoutValid(0) && this.varmanager.SetGlobalSettings(shaderdata.ShaderInstance, this.settings))
                 {
                     this.OnBeginQuery(context);
 
@@ -324,11 +324,11 @@ namespace VVVV.DX11.Nodes.Layers
                     this.settings.RenderDepth = 1;
                     this.settings.BackBuffer = null;
 
-                    if (this.FInSemantics.PluginIO.IsConnected)
+                    if (this.FInSemantics.IsConnected)
                     {
                         this.settings.CustomSemantics.AddRange(this.FInSemantics.ToArray());
                     }
-                    if (this.FInResSemantics.PluginIO.IsConnected)
+                    if (this.FInResSemantics.IsConnected)
                     {
                         this.settings.ResourceSemantics.AddRange(this.FInResSemantics.ToArray());
                     }
@@ -511,7 +511,7 @@ namespace VVVV.DX11.Nodes.Layers
 
                     this.OnEndQuery(context);
 
-                    
+
                 }
                 else
                 {
@@ -522,7 +522,7 @@ namespace VVVV.DX11.Nodes.Layers
             {
                 this.FOut[0][context] = this.FIn[0][context];
             }
-            
+
         }
 
         #endregion
@@ -554,7 +554,7 @@ namespace VVVV.DX11.Nodes.Layers
             for (int i = 0; i < this.FInLayout.SliceCount; i++)
             {
 
-                if (this.FInLayout.PluginIO.IsConnected && this.FInLayout[i] != null)
+                if (this.FInLayout.IsConnected && this.FInLayout[i] != null)
                 {
                     inputlayout[i] = this.FInLayout[i];
                 }

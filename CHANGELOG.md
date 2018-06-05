@@ -2,6 +2,65 @@ ChangeLog
 =========
 
 # Upcoming
+* [General] Submodules are now http, which should help for clining entire repository (ssh would fail on forks)
+* [Nodes] Added About (DX11), which contains version number, contributors and supporters information
+* [Nodes] Framedelay (2d and 3d) were not disposing resource when deleted from patch.
+* [Nodes] Framedelay (2d and 3d) now also start render graph (as part of update stage), and do not evaluate upstream anymore when disabled.
+* [Core] : New blend state presets (available in Blend and Renderstate nodes) : MultiplyAlpha (only multiplies alpha channel, leave color as it it), ReplaceAlpha (leave color and set new alpha), BlendDestination (uses alpha in the render target instead of pixel shader ouput as factor, for opacity masks).
+* [Nodes] Add EnableScissor (DX11.RenderState) : Allows to modify state to enable scissor, without touching the rest.
+* [Core] : All state nodes now use static enum instead of dynamic string based version, which increases performance for those nodes (no more lookup needed).
+* [Nodes] : Add DrawFullScreen (DX11.Layer) : as in title , a fast version instead of using module
+* [Nodes] Gesture (Kinect2.Microsoft) : Fix issue when rceiveing frame and no skeleton is reported (which could happen sporadically)
+* [Nodes] Add GetRigidBodyCustom(Bullet) : Allows to get custom pin of a rigid body.
+* [Nodes] Add BoxContainment(Bullet Rigid.Filter) : Allows to filter rigid body list if they are inside or outside a bounding box.
+* [Nodes] Add SphereContainment(Bullet Rigid.Filter) : Allows to filter rigid body list if they are inside or outside a bounding sphere.
+* [Nodes] GetConstraintDetails(Bullet) : Now outputs related body.
+* [Nodes] Gesture (Kinect2.Microsoft) : Now allows to specify user index manually, instead of using first found skeleton as before.
+* [Nodes]  Renderer (DX11) : Now has output for events as well as state for user input (mouse, keyboard and touch), contributed by @tebjan)
+* [Nodes]  New node GetArray (DX11.TextureArray), allows "GetSpread" in texture arrays, contributed by @sebl
+* [Nodes]  New node GetArray (DX11.TextureArray BinSize): same as above, but with bin size (allows combining), contributed by @sebl.
+* [Nodes] New node : AlphaToCoverage (DX11.RenderState) : allows to enable alpha to coverage for multisampling in an existing render state (without modifying other options)
+* [Nodes] New node : AlphaClip (DX11.Effect) : simple effect with texture that discards pixel if alpha is below a certain value
+* [Nodes] New node : DepthClip (DX11.RenderState) : allows to enable or disable depth clipping (near/far plane) in an existing render state (without modifying other options)
+* [Nodes] New node : Wireframe (DX11.RenderState) : allows to enable or disable wireframe in an existing render state (without modifying other options)
+* [Nodes] New node : CullMode (DX11.RenderState) : allows to enable or disable cull mode in an existing render state (without modifying other options)
+* [Core] : Texture FX Technique pin is now spreadable (means you can now use different effects for different slices, see girlpower\misc\texturefx_technique_spread folder for an example)
+* [Core] : Texture FX cache is now more efficient, no more penalty when switching techniques.
+* [Core] : Texture FX technique can now use a "wantmips" bool annotation, to build mips before the first pass (only if needed)
+* [Core] : Texture FX has a new option "Preserve On Disable" (spreadable), if Enabled pin is off, keeps previous frame texture instead of passing texture In.
+* [Nodes] : Info (DX11.Texture2d) no exception if a texture is null, returns same defaults
+* [Core] : New reference semantics (MIPLEVELSOF and INVMIPLEVELSOF) to allow to access input texture mip levels in effects (see girlpower\misc\referencing_miplevels for example)
+
+# 1.2
+* [General] Pack version info is now integrated, which allows to use pack versioning feature (as well as diffing).
+* [Help] Kinect 2 nodes now all have help patches as well, so now every node in the pack has a help file.
+* [Nodes] Fix spelling on Frustum (Transform)
+* [Nodes] Fix spelling on FrustumTest (DX11.Validator)
+* [Nodes] Fix Quad layer which would not recover if fed a Nil input.
+* [Nodes] Renderer (DX11.TextureArray) now has a UAV pin (disabled by default), so texture can be written by compute shaders.
+* [Bullet] Softworld node did not allow to create contstraints.
+* [Node] Temp target renderer was not releasing resource when deleting the node, which was creating memory leak when authoring.
+* [Core] Fix shader releasing their resources when deleting them from patch.
+* [Nodes] Add ExtractChannel (DX11.Texture), which allows to pick individual channel of a texture (also auto handling input/output formats when required).
+* [Nodes] Add RGBASplit (DX11.Texture), extract all texture channels in a separate texture.
+* [Nodes] Add HSLASplit (DX11.Texture), extract all texture channels in a separate texture (converts into either HSL or HSV)
+* [Nodes] Add Composite (DX11.Texture), combines a spread of texture into a single one, each texture can have individual blend mode,opacity and texture transform
+* [Nodes] AsSharedTexture (DX11.Texture) , now forces evaluation by default
+* [Nodes] Add AsSharedResource (DX11.Buffer) , to allow to share a dx11 buffer between various processes.
+* [Nodes] Add FromSharedResource (DX11.Buffer Structured) , receiver side for shared buffer.
+* [Nodes] Add FrameDelay (DX11.Texture 3d) , orthogonal to all framedalys, for 3d textures.
+* [Nodes] Add WriteMask (DX11.RenderState) : Allows to control which channels are written to
+* [Nodes] Add WithinSphere (DX11.Validator) : Only draw objects which have a bounding box contained within a sphere.
+* [Core] Added ConstantFactor preset in Blend (DX11.RenderState), to allow to use BlendFactor (DX11.RenderState) more easily.
+* [Bullet] All Create Body nodes now have custom string input (which was missing from previous version)
+* [Bullet] IsYoungerThan (Bullet Rigid.Filter) new node
+* [Nodes] Add AlphaOperation (DX11.RenderState) : Allows to control how the alpha channel is written in the texture (independently of color blending).
+* [Nodes] Add S+H (DX11.Texture 2d) , Same as standard S+H nodes, copies a resource if the set pin is on, blocks evaluation and render otherwise (also optimize resource flags/usage behind the scenes).
+* [Nodes] Add S+H (DX11.Texture 3d) , for 3d textures
+* [Nodes] Add S+H (DX11.Buffer Structured) , for structured buffers
+
+
+# 1.1
 * [Help] More than 100-150 new help patches, Every single node except Kinect2 (and experimental) now has a help patch.
 * [Bullet] Large redesign of the whole system, many more nodes, clearer API. Soft bodies are not back yet, but constraints + vehicle + filters are there.
 * [Build] Now all components are in various subfolders, to make it easier to search and pick and mix. 

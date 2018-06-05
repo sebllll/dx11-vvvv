@@ -30,11 +30,23 @@ namespace VVVV.DX11.Nodes.Kinect2
         [Input("Gesture File", IsSingle = true, StringType = StringType.Filename)]
         protected IDiffSpread<string> gesturefile;
 
+        [Input("Use Manual Index", IsSingle = true)]
+        protected IDiffSpread<bool> manualID;
+
+        [Input("Manual Index", IsSingle = true)]
+        protected IDiffSpread<string> manualIndex;
+
         [Output("Gesture Names")]
         protected ISpread<string> gesturenames;
 
         [Output("Gesture Type")]
         protected ISpread<GestureType> gesturetype;
+
+        [Output("Tracking Id Valid")]
+        protected ISpread<bool> trackingidvalid;
+
+        [Output("Tracking Active")]
+        protected ISpread<bool> trackingActive;
 
         [Output("Gesture Detected")]
         protected ISpread<bool> gesturedetected;
@@ -75,7 +87,7 @@ namespace VVVV.DX11.Nodes.Kinect2
                     }
                 }
 
-                if (this.FInRuntime.PluginIO.IsConnected)
+                if (this.FInRuntime.IsConnected)
                 {
                     //Cache runtime node
                     this.runtime = this.FInRuntime[0];
@@ -122,6 +134,18 @@ namespace VVVV.DX11.Nodes.Kinect2
                     this.logger.Log(ex);
                 }
             }
+
+            if (this.vgbFrameSource != null)
+            {
+                this.trackingidvalid[0] = this.vgbFrameSource.IsTrackingIdValid;
+                this.trackingActive[0] = this.vgbFrameSource.IsActive;
+            }
+            else
+            {
+                this.trackingidvalid[0] = false;
+                this.trackingActive[0] = false;
+            }
+
         }
 
         void vgbFrameReader_FrameArrived(object sender, VisualGestureBuilderFrameArrivedEventArgs e)
@@ -192,20 +216,51 @@ namespace VVVV.DX11.Nodes.Kinect2
                 }
             }
 
-            ulong found = 0;
-            for (int i = 0; i < this.lastframe.Length; i++)
+            if (this.manualID[0])
             {
-                if (this.lastframe[i].IsTracked)
+
+                ulong search = 0;
+                bool found = false;
+                if (this.manualIndex.SliceCount > 0)
                 {
-                    found = this.lastframe[i].TrackingId;
+                    if (ulong.TryParse(this.manualIndex[0], out search))
+                    {
+                        for (int i = 0; i < this.lastframe.Length; i++)
+                        {
+                            if (this.lastframe[i] != null && this.lastframe[i].IsTracked && this.lastframe[i].TrackingId == search)
+                            {
+                                found = true;
+                            }
+                        }
+                    }
                 }
+
+
+                if (found)
+                {
+                    this.vgbFrameSource.TrackingId = search;
+                }
+                this.vgbFrameReader.IsPaused = found == false;
+            }
+            else
+            {
+                ulong found = 0;
+                for (int i = 0; i < this.lastframe.Length; i++)
+                {
+                    if (this.lastframe[i] != null && this.lastframe[i].IsTracked)
+                    {
+                        found = this.lastframe[i].TrackingId;
+                    }
+                }
+
+                if (found > 0)
+                {
+                    this.vgbFrameSource.TrackingId = found;
+                }
+                this.vgbFrameReader.IsPaused = found == 0;
             }
 
-            if (found > 0)
-            {
-                this.vgbFrameSource.TrackingId = found;
-            }
-            this.vgbFrameReader.IsPaused = found == 0;
+
         }
 
         private void Reset()

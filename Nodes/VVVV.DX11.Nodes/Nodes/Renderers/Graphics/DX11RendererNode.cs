@@ -33,17 +33,17 @@ using VVVV.DX11.Windows;
 
 namespace VVVV.DX11.Nodes
 {
-    [PluginInfo(Name="Renderer",Category="DX11",Author="vux,tonfilm",AutoEvaluate=true,
-        InitialWindowHeight=300,InitialWindowWidth=400,InitialBoxWidth=400,InitialBoxHeight=300, InitialComponentMode=TComponentMode.InAWindow)]
+    [PluginInfo(Name = "Renderer", Category = "DX11", Author = "vux,tonfilm", AutoEvaluate = true,
+        InitialWindowHeight = 300, InitialWindowWidth = 400, InitialBoxWidth = 400, InitialBoxHeight = 300, InitialComponentMode = TComponentMode.InAWindow)]
     public partial class DX11RendererNode : IPluginEvaluate, IDisposable, IDX11RendererHost, IDX11RenderWindow, IDX11Queryable, IUserInputWindow, IBackgroundColor, IPartImportsSatisfiedNotification
     {
         #region Touch Stuff
         private object m_touchlock = new object();
         private Dictionary<int, TouchData> touches = new Dictionary<int, TouchData>();
 
-        private event EventHandler<WMTouchEventArgs> Touchdown;
-        private event EventHandler<WMTouchEventArgs> Touchup;
-        private event EventHandler<WMTouchEventArgs> TouchMove;
+        public event EventHandler<WMTouchEventArgs> TouchDown;
+        public event EventHandler<WMTouchEventArgs> TouchUp;
+        public event EventHandler<WMTouchEventArgs> TouchMove;
 
         private void OnTouchDownHandler(object sender, WMTouchEventArgs e)
         {
@@ -87,19 +87,24 @@ namespace VVVV.DX11.Nodes
                     handled = false;
                     break;
             }
-            base.WndProc(ref m);  // Call parent WndProc for default message processing.
 
-            if (handled) // Acknowledge event if handled.
-                m.Result = new System.IntPtr(1);
+            if (this.FInTouchUnhandle[0] == false)
+            {
+                if (handled) // Acknowledge event if handled.
+                    m.Result = new System.IntPtr(1);
+            }
+
+            base.WndProc(ref m);  // Call parent WndProc for default message processing.
         }
 
+        readonly int touchInputByteSize = Marshal.SizeOf(typeof(TOUCHINPUT));
         private bool DecodeTouch(ref Message m)
         {
             // More than one touchinput may be associated with a touch message,
             int inputCount = (m.WParam.ToInt32() & 0xffff); // Number of touch inputs, actual per-contact messages
             TOUCHINPUT[] inputs = new TOUCHINPUT[inputCount];
 
-            if (!TouchConstants.GetTouchInputInfo(m.LParam, inputCount, inputs, Marshal.SizeOf(new TOUCHINPUT())))
+            if (!TouchConstants.GetTouchInputInfo(m.LParam, inputCount, inputs, touchInputByteSize))
             {
                 return false;
             }
@@ -112,11 +117,11 @@ namespace VVVV.DX11.Nodes
                 EventHandler<WMTouchEventArgs> handler = null;
                 if ((ti.dwFlags & TouchConstants.TOUCHEVENTF_DOWN) != 0)
                 {
-                    handler = Touchdown;
+                    handler = TouchDown;
                 }
                 else if ((ti.dwFlags & TouchConstants.TOUCHEVENTF_UP) != 0)
                 {
-                    handler = Touchup;
+                    handler = TouchUp;
                 }
                 else if ((ti.dwFlags & TouchConstants.TOUCHEVENTF_MOVE) != 0)
                 {
@@ -133,14 +138,15 @@ namespace VVVV.DX11.Nodes
                     te.ContactY = ti.cyContact / 100;
                     te.ContactX = ti.cxContact / 100;
                     te.Id = ti.dwID;
-                    {
-                        Point pt = PointToClient(new Point(ti.x / 100, ti.y / 100));
-                        te.LocationX = pt.X;
-                        te.LocationY = pt.Y;
-                    }
+
+                    Point pt = PointToClient(new Point(ti.x / 100, ti.y / 100));
+                    te.LocationX = pt.X;
+                    te.LocationY = pt.Y;
+
                     te.Time = ti.dwTime;
                     te.Mask = ti.dwMask;
                     te.Flags = ti.dwFlags;
+                    te.TouchDeviceID = ti.hSource.ToInt64();
 
                     handler(this, te);
 
@@ -167,31 +173,31 @@ namespace VVVV.DX11.Nodes
         [Import()]
         protected ILogger logger;
 
-        [Input("Layers", Order=1)]
+        [Input("Layers", Order = 1)]
         protected Pin<DX11Resource<DX11Layer>> FInLayer;
 
-        [Input("Clear",DefaultValue=1,Order = 2)]
+        [Input("Clear", DefaultValue = 1, Order = 2)]
         protected ISpread<bool> FInClear;
 
         [Input("Clear Depth", DefaultValue = 1, Order = 2)]
         protected ISpread<bool> FInClearDepth;
 
-        [Input("Background Color",DefaultColor=new double[] { 0,0,0,1 },Order=3)]
+        [Input("Background Color", DefaultColor = new double[] { 0, 0, 0, 1 }, Order = 3)]
         protected ISpread<Color4> FInBgColor;
 
-        [Input("VSync",Visibility=PinVisibility.OnlyInspector, IsSingle=true)]
+        [Input("VSync", Visibility = PinVisibility.OnlyInspector, IsSingle = true)]
         protected ISpread<bool> FInVsync;
 
-        [Input("Buffer Count", Visibility = PinVisibility.OnlyInspector, DefaultValue=1, IsSingle=true)]
+        [Input("Buffer Count", Visibility = PinVisibility.OnlyInspector, DefaultValue = 1, IsSingle = true)]
         protected IDiffSpread<int> FInBufferCount;
 
-        [Input("Do Not Wait", Visibility = PinVisibility.OnlyInspector, IsSingle=true)]
+        [Input("Do Not Wait", Visibility = PinVisibility.OnlyInspector, IsSingle = true)]
         protected ISpread<bool> FInDNW;
 
         [Input("Show Cursor", DefaultValue = 0, Visibility = PinVisibility.OnlyInspector)]
         protected IDiffSpread<bool> FInShowCursor;
 
-        [Input("Disable Shortcuts", DefaultValue = 0,IsSingle =true, Visibility = PinVisibility.OnlyInspector)]
+        [Input("Disable Shortcuts", DefaultValue = 0, IsSingle = true, Visibility = PinVisibility.OnlyInspector)]
         protected IDiffSpread<bool> FInDisableShortCuts;
 
         [Input("Refresh Rate", DefaultValue = 60, Visibility = PinVisibility.OnlyInspector)]
@@ -203,13 +209,13 @@ namespace VVVV.DX11.Nodes
         [Input("Fullscreen", Order = 5)]
         protected IDiffSpread<bool> FInFullScreen;
 
-        [Input("Enable Depth Buffer", Order = 6,DefaultValue=1)]
+        [Input("Enable Depth Buffer", Order = 6, DefaultValue = 1)]
         protected IDiffSpread<bool> FInDepthBuffer;
 
         [Input("Clear Depth Value", Order = 9, DefaultValue = 1)]
         protected ISpread<float> FInClearDepthValue;
 
-        [Input("AA Samples per Pixel", DefaultEnumEntry="1",EnumName="DX11_AASamples")]
+        [Input("AA Samples per Pixel", DefaultEnumEntry = "1", EnumName = "DX11_AASamples")]
         protected IDiffSpread<EnumEntry> FInAASamplesPerPixel;
 
         [Input("Enabled", DefaultValue = 1, Order = 9)]
@@ -221,7 +227,7 @@ namespace VVVV.DX11.Nodes
         [Input("Projection", Order = 11)]
         protected IDiffSpread<Matrix> FInProjection;
 
-        [Input("Aspect Ratio", Order = 12,Visibility=PinVisibility.Hidden)]
+        [Input("Aspect Ratio", Order = 12, Visibility = PinVisibility.Hidden)]
         protected IDiffSpread<Matrix> FInAspect;
 
         [Input("Crop", Order = 13, Visibility = PinVisibility.OnlyInspector)]
@@ -230,16 +236,19 @@ namespace VVVV.DX11.Nodes
         [Input("ViewPort", Order = 20)]
         protected Pin<Viewport> FInViewPort;
 
+        [Config("Unhandle Touch Messages", Order = 100, Visibility = PinVisibility.OnlyInspector)]
+        protected IDiffSpread<bool> FInTouchUnhandle;
+
         #endregion
 
         #region Output Pins
-        [Output("Mouse State",AllowFeedback=true)]
+        [Output("Mouse State", AllowFeedback = true)]
         protected ISpread<MouseState> FOutMouseState;
 
         [Output("Keyboard State", AllowFeedback = true)]
         protected ISpread<KeyboardState> FOutKState;
 
-        [Output("Touch Supported",IsSingle=true)]
+        [Output("Touch Supported", IsSingle = true)]
         protected ISpread<bool> FOutTouchSupport;
 
         [Output("Touch Data", AllowFeedback = true)]
@@ -253,13 +262,13 @@ namespace VVVV.DX11.Nodes
 
         protected ISpread<DX11Resource<DX11SwapChain>> FOuFS;
 
-        [Output("Present Time",IsSingle=true)]
+        [Output("Present Time", IsSingle = true)]
         protected ISpread<double> FOutPresent;
 
         [Output("Query", Order = 200, IsSingle = true)]
         protected ISpread<IDX11Queryable> FOutQueryable;
 
-        [Output("Control", Order = 201, IsSingle = true, Visibility = PinVisibility.OnlyInspector, AllowFeedback =true)]
+        [Output("Control", Order = 201, IsSingle = true, Visibility = PinVisibility.OnlyInspector, AllowFeedback = true)]
         protected ISpread<Control> FOutCtrl;
 
         [Output("Node Ref", Order = 201, IsSingle = true, Visibility = PinVisibility.OnlyInspector)]
@@ -276,8 +285,6 @@ namespace VVVV.DX11.Nodes
         private int wheel = 0;
 
         private Dictionary<DX11RenderContext, DX11GraphicsRenderer> renderers = new Dictionary<DX11RenderContext, DX11GraphicsRenderer>();
-        private List<DX11RenderContext> updateddevices = new List<DX11RenderContext>();
-        private List<DX11RenderContext> rendereddevices = new List<DX11RenderContext>();
         private DepthBufferManager depthmanager;
 
         private DX11RenderSettings settings = new DX11RenderSettings();
@@ -303,19 +310,17 @@ namespace VVVV.DX11.Nodes
                 this.FOuFS[0] = new DX11Resource<DX11SwapChain>();
             }
 
-            this.updateddevices.Clear();
-            this.rendereddevices.Clear();
             this.FInvalidateSwapChain = false;
 
             if (!this.depthmanager.FormatChanged) // do not clear reset if format changed
             {
                 this.depthmanager.NeedReset = false;
-            } 
+            }
             else
             {
                 this.depthmanager.FormatChanged = false; //Clear flag ok
             }
-            
+
             if (FInAASamplesPerPixel.IsChanged || this.FInBufferCount.IsChanged || this.FInFlipSequential.IsChanged || this.FInRefreshRate.IsChanged)
             {
                 this.depthmanager.NeedReset = true;
@@ -349,9 +354,9 @@ namespace VVVV.DX11.Nodes
             }
 
             this.FOutKState[0] = new KeyboardState(this.FKeys);
-            this.FOutMouseState[0] = MouseState.Create(this.FMousePos.x, this.FMousePos.y, this.FMouseButtons.x > 0.5f, this.FMouseButtons.y > 0.5f, this.FMouseButtons.z> 0.5f, false, false, this.wheel);
+            this.FOutMouseState[0] = MouseState.Create(this.FMousePos.x, this.FMousePos.y, this.FMouseButtons.x > 0.5f, this.FMouseButtons.y > 0.5f, this.FMouseButtons.z > 0.5f, false, false, this.wheel);
             this.FOutBackBufferSize[0] = new Vector2D(this.Width, this.Height);
-            
+
             this.FOutTouchSupport[0] = this.touchsupport;
 
             this.FOutTouchData.SliceCount = this.touches.Count;
@@ -392,10 +397,6 @@ namespace VVVV.DX11.Nodes
         public void Render(DX11RenderContext context)
         {
             Device device = context.Device;
-            
-            if (!this.updateddevices.Contains(context)) { this.Update(context); }
-
-            if (this.rendereddevices.Contains(context)) { return; }
 
             Exception exception = null;
 
@@ -452,7 +453,7 @@ namespace VVVV.DX11.Nodes
                     {
                         this.EndQuery(context);
                     }
-                } 
+                }
                 catch (Exception ex)
                 {
                     exception = ex;
@@ -463,8 +464,6 @@ namespace VVVV.DX11.Nodes
                 }
             }
 
-            this.rendereddevices.Add(context);
-
             //Rethrow
             if (exception != null)
             {
@@ -473,7 +472,7 @@ namespace VVVV.DX11.Nodes
         }
         #endregion
 
-        private void RenderSlice(DX11RenderContext context,DX11RenderSettings settings, int i, bool viewportpop)
+        private void RenderSlice(DX11RenderContext context, DX11RenderSettings settings, int i, bool viewportpop)
         {
             float cw = (float)this.ClientSize.Width;
             float ch = (float)this.ClientSize.Height;
@@ -494,7 +493,7 @@ namespace VVVV.DX11.Nodes
 
 
             //Call render on all layers
-            this.FInLayer.RenderAll(context, settings);
+            this.FInLayer.RenderAllWithLog(context, settings, logger);
 
             if (viewportpop)
             {
@@ -506,8 +505,6 @@ namespace VVVV.DX11.Nodes
         public void Update(DX11RenderContext context)
         {
             Device device = context.Device;
-
-            if (this.updateddevices.Contains(context)) { return; }
 
             int samplecount = Convert.ToInt32(FInAASamplesPerPixel[0].Name);
 
@@ -557,9 +554,9 @@ namespace VVVV.DX11.Nodes
 
                 this.FInvalidateSwapChain = false;
 
-                #if DEBUG
+#if DEBUG
                 this.FOutBackBuffer[0][context].Resource.DebugName = "BackBuffer";
-                #endif
+#endif
                 this.depthmanager.NeedReset = true;
             }
 
@@ -568,8 +565,6 @@ namespace VVVV.DX11.Nodes
             if (!this.renderers.ContainsKey(context)) { this.renderers.Add(context, new DX11GraphicsRenderer(context)); }
 
             this.depthmanager.Update(context, sc.Width, sc.Height, sd);
-
-            this.updateddevices.Add(context);
         }
         #endregion
 
@@ -593,16 +588,16 @@ namespace VVVV.DX11.Nodes
                 PresentFlags flags = this.FInDNW[0] ? (PresentFlags)8 : PresentFlags.None;
                 if (this.FInVsync[0])
                 {
-                    this.FOutBackBuffer[0][this.RenderContext].Present(1, flags); 
+                    this.FOutBackBuffer[0][this.RenderContext].Present(1, flags);
                 }
                 else
                 {
-                    this.FOutBackBuffer[0][this.RenderContext].Present(0, flags); 
+                    this.FOutBackBuffer[0][this.RenderContext].Present(0, flags);
                 }
             }
             catch
             {
-                
+
             }
 
             sw.Stop();
@@ -626,7 +621,7 @@ namespace VVVV.DX11.Nodes
 
         public IntPtr WindowHandle
         {
-            get 
+            get
             {
                 return this.Handle;
             }
@@ -673,10 +668,15 @@ namespace VVVV.DX11.Nodes
 
         }
 
+        [Import]
+        protected IIOFactory FIOFactory;
+
         public void OnImportsSatisfied()
         {
             this.FOutCtrl[0] = this;
             this.FOutRef[0] = (INode)this.FHost;
+
+            CreateUserInputEventPins();
         }
     }
 }

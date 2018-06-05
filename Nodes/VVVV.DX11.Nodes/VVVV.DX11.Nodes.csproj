@@ -16,6 +16,10 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Reactive">
+      <HintPath>..\..\Dependencies\mixed\System.Reactive.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -29,12 +33,16 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AboutDX11Node.cs" />
+    <Compile Include="Nodes\Buffers\FromSharedBufferNode.cs" />
     <Compile Include="Nodes\Buffers\ImmutableRawBufferNode.cs" />
     <Compile Include="Nodes\Buffers\DynamicRawBufferNode.cs" />
     <Compile Include="Nodes\Buffers\Lights\DirectionalLightBuffer.cs" />
     <Compile Include="Nodes\Buffers\Lights\PointLightBuffer.cs" />
     <Compile Include="Nodes\Buffers\Lights\SpotLightBuffer.cs" />
     <Compile Include="Nodes\Buffers\ReadBackRawBufferStreamNode.cs" />
+    <Compile Include="Nodes\Buffers\ToSharedBufferNode.cs" />
+    <Compile Include="Nodes\Generics\SampleHoldNodes.cs" />
     <Compile Include="Nodes\Geometry\Indirect\DispatchIndirectBufferNode.cs" />
     <Compile Include="Nodes\Geometry\Indirect\DispatchIndirect1DNode.cs" />
     <Compile Include="Nodes\Geometry\Indirect\IndexIndirectDrawerBufferNode.cs" />
@@ -46,6 +54,7 @@
     <Compile Include="Nodes\Geometry\Primitives\DX11SegmentZNode.cs" />
     <Compile Include="Nodes\Geometry\RawBufferAsGeometryNode.cs" />
     <Compile Include="Nodes\Geometry\Indirect\VertexIndirectDrawerBufferNode.cs" />
+    <Compile Include="Nodes\Layers\Basic\DrawFullScreenNode.cs" />
     <Compile Include="Nodes\Layers\DX11LayerClearPipelineNode.cs" />
     <Compile Include="Nodes\Layers\DX11LayerEnabledNode.cs" />
     <Compile Include="Nodes\Layers\DX11LayerViewportRouterNode.cs" />
@@ -69,6 +78,9 @@
     <Compile Include="Nodes\Renderers\Buffers\DX11RawBufferRenderer.cs" />
     <Compile Include="Nodes\Renderers\Buffers\DX11AdvancedStreamOutRendererNode.cs" />
     <Compile Include="Nodes\Renderers\Buffers\DX11StreamOutRendererNode.cs" />
+    <Compile Include="Nodes\Renderers\Graphics\DX11RendererNode_reactive.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Nodes\Renderers\Graphics\DX11SpreadRendererNode.cs" />
     <Compile Include="Nodes\Renderers\Graphics\DX11Texture1dArrayRendererNode.cs" />
     <Compile Include="Nodes\Renderers\Graphics\DX11Texture1dRendererNode.cs" />
@@ -77,6 +89,13 @@
     <Compile Include="Nodes\RenderStates\Advanced\DX11StencilReferenceStateNode.cs" />
     <Compile Include="Nodes\RenderStates\Advanced\DX11BlendFactorStateNode.cs" />
     <Compile Include="Nodes\RenderStates\Advanced\DX11PerTargetBlendStateNode.cs" />
+    <Compile Include="Nodes\RenderStates\AlphaOperationNode.cs" />
+    <Compile Include="Nodes\RenderStates\CullModeNode.cs" />
+    <Compile Include="Nodes\RenderStates\WireframeNode.cs" />
+    <Compile Include="Nodes\RenderStates\DepthClipNode.cs" />
+    <Compile Include="Nodes\RenderStates\EnableScissorNode.cs" />
+    <Compile Include="Nodes\RenderStates\AlphaToCoverageNode.cs" />
+    <Compile Include="Nodes\RenderStates\WriteMaskNode.cs" />
     <Compile Include="Nodes\RenderStates\RenderStatePresetNode.cs" />
     <Compile Include="Nodes\RenderStates\SamplerStateAnisotropicNode.cs" />
     <Compile Include="Nodes\RenderStates\SamplerStatePresetNode.cs" />
@@ -85,11 +104,17 @@
     <Compile Include="Nodes\Textures\1D\WriterTexture1dNode.cs" />
     <Compile Include="Nodes\Textures\2D\AsTextureNode.cs" />
     <Compile Include="Nodes\Textures\2D\PixelData.cs" />
+    <Compile Include="Nodes\Textures\3D\FrameDelayTexture3dNode.cs" />
+    <Compile Include="Nodes\Textures\Array\GetArraysNode.cs" />
+    <Compile Include="Nodes\Textures\Array\GetArrayNode.cs" />
     <Compile Include="Nodes\Textures\Array\GetSliceDepthTextureArray.cs" />
+    <Compile Include="Nodes\Textures\Array\GetSliceToArray.cs" />
     <Compile Include="Nodes\Textures\Array\GetSliceTextureArray.cs" />
+    <Compile Include="Nodes\Textures\Array\CopySubArray.cs" />
     <Compile Include="Nodes\Textures\Array\TextureArraySetSlice.cs" />
     <Compile Include="Nodes\Textures\Array\TextureArraySetSliceNode.cs" />
     <Compile Include="Nodes\Validators\RemoveSliceValidatorNode.cs" />
+    <Compile Include="Nodes\Validators\WithinSphereValidatorNode.cs" />
     <Compile Include="ShaderUtils.cs" />
     <EmbeddedResource Include="effects\quad.fx" />
     <Compile Include="IOleStuff.cs" />
@@ -177,7 +202,6 @@
     <Compile Include="Nodes\RenderStates\Advanced\DX11DepthStencilStateNode.cs" />
     <Compile Include="Nodes\RenderStates\Advanced\DX11RasterizerStateNode.cs" />
     <Compile Include="Nodes\RenderStates\Advanced\DX11SamplerStateNode.cs" />
-    <Compile Include="Nodes\RenderStates\BaseDX11RenderStateSimple.cs" />
     <Compile Include="Nodes\RenderStates\BlendPresetNode.cs" />
     <Compile Include="Nodes\RenderStates\DepthStencilPresetNode.cs" />
     <Compile Include="Nodes\RenderStates\RasterizerPresetNode.cs" />
@@ -199,8 +223,8 @@
     <Compile Include="Nodes\Textures\3D\WriterTexture3dNode.cs" />
     <Compile Include="Nodes\Textures\FileTextureBaseNode.cs" />
     <Compile Include="Nodes\Textures\FileTextureNodes.cs" />
-    <Compile Include="Nodes\Utils\CameraFrustrumNode.cs" />
-    <Compile Include="Nodes\Validators\FrustrumTestNode.cs" />
+    <Compile Include="Nodes\Utils\CameraFrustumNode.cs" />
+    <Compile Include="Nodes\Validators\FrustumTestNode.cs" />
     <Compile Include="Nodes\Validators\SelectValidatorNode.cs" />
     <Compile Include="Nodes\Validators\ViewportValidatorNode.cs" />
     <Compile Include="Nodes\Validators\SliceValidatorNode.cs" />
@@ -220,8 +244,12 @@
   <ItemGroup>
     <EmbeddedResource Include="effects\GenerateDispatch1D.fx" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="effects\DrawFullScreen.fx" />
+  </ItemGroup>
   <PropertyGroup>
     <PostBuildEvent>xcopy "$(SolutionDir)girlpower\nodes\plugins" "$(OutputPath)\..\" /S /R /Y /I</PostBuildEvent>
+    <PostBuildEvent>xcopy "$(SolutionDir)VersionData" "$(OutputPath)\..\..\..\" /S /R /Y /I</PostBuildEvent>
   </PropertyGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
