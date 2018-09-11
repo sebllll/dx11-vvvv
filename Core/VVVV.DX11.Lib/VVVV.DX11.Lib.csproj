@@ -150,12 +150,15 @@
     <Compile Include="RenderGraph\Pins\DX11ResourceRegistry.cs" />
     <Compile Include="Rendering\DepthBufferManager.cs" />
     <Compile Include="Rendering\DX11GraphicsRenderer.cs" />
+    <Compile Include="Rendering\Order\DX11LayerGetSliceOrder.cs" />
+    <Compile Include="Rendering\Order\DX11SingleSliceOrder.cs" />
     <Compile Include="Rendering\RenderTargetManager.cs" />
     <Compile Include="Rendering\Settings\DX11CustomRenderSemantics.cs" />
     <Compile Include="Rendering\Settings\DX11RenderSemantic.cs" />
     <Compile Include="Rendering\Settings\DX11RenderSpace.cs" />
     <Compile Include="Rendering\ShaderPipelineState.cs" />
     <Compile Include="Rendering\Validators\DX11RemoveSliceValidator.cs" />
+    <Compile Include="Rendering\Validators\DX11WithinViewportValidator.cs" />
     <Compile Include="Rendering\Validators\DX11ViewportValidator.cs" />
     <Compile Include="Rendering\Validators\DX11FrustrumValidator.cs" />
     <Compile Include="Rendering\Validators\DX11SelectValidator.cs" />

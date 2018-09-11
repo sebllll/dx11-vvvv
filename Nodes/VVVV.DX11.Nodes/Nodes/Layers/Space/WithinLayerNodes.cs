@@ -95,26 +95,30 @@ namespace VVVV.DX11.Nodes
     [PluginInfo(Name = "PixelBillBoard", Category = "DX11.Layer", Version = "")]
     public class PixelBillBoardNode : AbstractDX11LayerSpaceNode
     {
-	    [Input("Transform In", IsSingle = true, Visibility = PinVisibility.OnlyInspector)]
+	    [Input("Transform In")]
         protected ISpread<Matrix> FTransformIn;
 
-        [Input("Double Scale", IsSingle = true, Order = 50)]
+        [Input("Double Scale", Order = 50)]
         protected ISpread<bool> FDoubleScale;
 
-        [Input("Top Left", IsSingle = true, Order = 51)]
+        [Input("Top Left", Order = 51)]
         protected ISpread<bool> FTopLeft;
+
+        [Input("Invert Y", Order = 53)]
+        protected ISpread<bool> FInvertY;
 
         protected override int LayerCount
         {
-            get { return SpreadUtils.SpreadMax(FTransformIn, FDoubleScale, FTopLeft); }
+            get { return SpreadUtils.SpreadMax(FTransformIn, FDoubleScale, FTopLeft, FInvertY); }
         }
 
         protected override void UpdateSettings(DX11RenderSettings settings, int slice)
         {
             float f = this.FDoubleScale[slice] ? 2.0f : 1.0f;
+            float y = this.FInvertY[slice] ? -1.0f : 1.0f;
 
             settings.View = Matrix.Identity;
-            settings.Projection = Matrix.Scaling(f / settings.RenderWidth,f / settings.RenderHeight, 1.0f) * FTransformIn[slice];
+            settings.Projection = Matrix.Scaling(f / settings.RenderWidth, f / settings.RenderHeight, 1.0f) * FTransformIn[slice];
 
             if (FTopLeft[slice])
             {
@@ -123,25 +127,25 @@ namespace VVVV.DX11.Nodes
                 settings.Projection = Matrix.Translation(-tx, ty, 0.0f) * settings.Projection;
             }
 
-            settings.ViewProjection = settings.Projection;
+            settings.ViewProjection = Matrix.Scaling(1,y,1) * settings.Projection;
         }
     }
 
     [PluginInfo(Name = "AspectRatio", Category = "DX11.Layer", Version = "")]
     public class AspectRatioNode : AbstractDX11LayerSpaceNode
     {
-        [Input("Transform In", IsSingle = true)]
+        [Input("Transform In")]
         protected ISpread<Matrix> FTransformIn;
 
-        [Input("Uniform Scale", DefaultValue=1, IsSingle = true)]
+        [Input("Uniform Scale", DefaultValue=1)]
         protected ISpread<float> FScale;
 
-        [Input("Alignment", DefaultEnumEntry = "FitIn", EnumName = "AspectRatioAlignment", IsSingle = true)]
+        [Input("Alignment", DefaultEnumEntry = "FitIn", EnumName = "AspectRatioAlignment")]
         protected ISpread<EnumEntry> FAlign;
 
         protected override int LayerCount
         {
-            get { return 1; }
+            get { return SpreadUtils.SpreadMax(FTransformIn, FScale, FAlign); }
         }
 
         protected override void UpdateSettings(DX11RenderSettings settings, int slice)

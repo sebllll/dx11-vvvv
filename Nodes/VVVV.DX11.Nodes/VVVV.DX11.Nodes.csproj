@@ -37,9 +37,11 @@
     <Compile Include="Nodes\Buffers\FromSharedBufferNode.cs" />
     <Compile Include="Nodes\Buffers\ImmutableRawBufferNode.cs" />
     <Compile Include="Nodes\Buffers\DynamicRawBufferNode.cs" />
+    <Compile Include="Nodes\Buffers\InfoBufferNode.cs" />
     <Compile Include="Nodes\Buffers\Lights\DirectionalLightBuffer.cs" />
     <Compile Include="Nodes\Buffers\Lights\PointLightBuffer.cs" />
     <Compile Include="Nodes\Buffers\Lights\SpotLightBuffer.cs" />
+    <Compile Include="Nodes\Buffers\ReadbackCounterNode.cs" />
     <Compile Include="Nodes\Buffers\ReadBackRawBufferStreamNode.cs" />
     <Compile Include="Nodes\Buffers\ToSharedBufferNode.cs" />
     <Compile Include="Nodes\Generics\SampleHoldNodes.cs" />
@@ -57,6 +59,7 @@
     <Compile Include="Nodes\Layers\Basic\DrawFullScreenNode.cs" />
     <Compile Include="Nodes\Layers\DX11LayerClearPipelineNode.cs" />
     <Compile Include="Nodes\Layers\DX11LayerEnabledNode.cs" />
+    <Compile Include="Nodes\Layers\DX11LayerOpacityNode.cs" />
     <Compile Include="Nodes\Layers\DX11LayerViewportRouterNode.cs" />
     <Compile Include="Nodes\Layers\DX11LayerScissorNode.cs" />
     <Compile Include="Nodes\Layers\DX11LayerSpreadNode.cs" />
@@ -115,6 +118,7 @@
     <Compile Include="Nodes\Textures\Array\TextureArraySetSliceNode.cs" />
     <Compile Include="Nodes\Validators\RemoveSliceValidatorNode.cs" />
     <Compile Include="Nodes\Validators\WithinSphereValidatorNode.cs" />
+    <Compile Include="Nodes\Validators\WithinViewportValidatorNode.cs" />
     <Compile Include="ShaderUtils.cs" />
     <EmbeddedResource Include="effects\quad.fx" />
     <Compile Include="IOleStuff.cs" />
