@@ -18,6 +18,7 @@ using VVVV.DX11.Lib.Effects;
 using FeralTic.DX11;
 using FeralTic.DX11.Resources;
 using FeralTic.DX11.StockEffects;
+using VVVV.DX11.Rendering.TextureFX;
 
 namespace VVVV.DX11.Nodes.Layers
 {
@@ -28,13 +29,15 @@ namespace VVVV.DX11.Nodes.Layers
         //private List<DX11ResourcePoolEntry<DX11RenderTarget2D>> lastframetargets = new List<DX11ResourcePoolEntry<DX11RenderTarget2D>>();
         private RenderTargetView[] nullrtvs = new RenderTargetView[8];
 
-        private DX11ObjectRenderSettings objectsettings = new DX11ObjectRenderSettings();
         private DX11ImageShaderVariableManager varmanager;
         private DX11ContextElement<DX11ShaderVariableCache> shaderVariableCache = new DX11ContextElement<DX11ShaderVariableCache>();
         private DX11ContextElement<DX11ShaderData> deviceshaderdata = new DX11ContextElement<DX11ShaderData>();
         private DX11ContextElement<ImageShaderInfo> imageShaderInfo = new DX11ContextElement<ImageShaderInfo>();
 
         private Spread<DX11ResourcePoolEntry<DX11RenderTarget2D>> previousFrameResults = new Spread<DX11ResourcePoolEntry<DX11RenderTarget2D>>();
+
+        private DX11RenderSettings renderSettings = new DX11RenderSettings();
+        private DX11ObjectRenderSettings objectSettings = new DX11ObjectRenderSettings();
 
         #region Default Input Pins
         [Input("Depth In",Visibility=PinVisibility.OnlyInspector)]
@@ -60,6 +63,9 @@ namespace VVVV.DX11.Nodes.Layers
 
         [Input("Resource Semantics", Order = 5001, Visibility = PinVisibility.OnlyInspector)]
         protected Pin<DX11Resource<IDX11RenderSemantic>> FInResSemantics;
+
+        [Input("Pre Post Actions", Order = 5001, Visibility = PinVisibility.OnlyInspector)]
+        protected ISpread<IDX11TextureFXPassListener> FinPrePostActions;  
         #endregion
 
         #region Output Pins
@@ -236,11 +242,22 @@ namespace VVVV.DX11.Nodes.Layers
                 }
             }
 
-            DX11ObjectRenderSettings or = new DX11ObjectRenderSettings();
 
             int wi, he;
             DX11ResourcePoolEntry<DX11RenderTarget2D> preservedtarget = null;
-            
+
+            renderSettings.CustomSemantics.Clear();
+            renderSettings.ResourceSemantics.Clear();
+
+            if (this.FInSemantics.IsConnected)
+            {
+                renderSettings.CustomSemantics.AddRange(this.FInSemantics.ToArray());
+            }
+            if (this.FInResSemantics.IsConnected)
+            {
+                renderSettings.ResourceSemantics.AddRange(this.FInResSemantics.ToArray());
+            }
+
             for (int textureIndex = 0; textureIndex < this.spmax; textureIndex++)
             {
                 int passcounter = 0;
@@ -290,21 +307,13 @@ namespace VVVV.DX11.Nodes.Layers
                     }
                     #endregion
 
-                    DX11RenderSettings r = new DX11RenderSettings();
-                    r.RenderWidth = wi;
-                    r.RenderHeight = he;
-                    if (this.FInSemantics.IsConnected)
-                    {
-                        r.CustomSemantics.AddRange(this.FInSemantics.ToArray());
-                    }
-                    if (this.FInResSemantics.IsConnected)
-                    {
-                        r.ResourceSemantics.AddRange(this.FInResSemantics.ToArray());
-                    }
+                    renderSettings.RenderWidth = wi;
+                    renderSettings.RenderHeight = he;
 
-                    this.varmanager.SetGlobalSettings(shaderdata.ShaderInstance, r);
+
+                    this.varmanager.SetGlobalSettings(shaderdata.ShaderInstance, renderSettings);
                     var variableCache = this.shaderVariableCache[context];
-                    variableCache.ApplyGlobals(r);
+                    variableCache.ApplyGlobals(renderSettings);
 
                     
                     DX11ResourcePoolEntry<DX11RenderTarget2D> lasttmp = null;
@@ -361,194 +370,205 @@ namespace VVVV.DX11.Nodes.Layers
                         ImageShaderPassInfo passInfo = techniqueInfo.GetPassInfo(passIndex);
                         bool isLastPass = passIndex == techniqueInfo.PassCount - 1;
 
-                        for (int kiter = 0; kiter < passInfo.IterationCount; kiter++)
+
+                        Format fmt = initial.Format;
+                        if (passInfo.CustomFormat)
                         {
-                            Format fmt = initial.Format;
-                            if (passInfo.CustomFormat)
-                            {
-                                fmt = passInfo.Format;
-                            }
-                            bool mips = passInfo.Mips || (isLastPass && FInMipLastPass[textureIndex]);
-
-                            int w, h;
-                            if (passIndex == 0)
-                            {
-                                h = he;
-                                w = wi;
-                            }
-                            else
-                            {
-                                h = passInfo.Reference == ImageShaderPassInfo.eImageScaleReference.Initial ? he : lastrt.Height;
-                                w = passInfo.Reference == ImageShaderPassInfo.eImageScaleReference.Initial ? wi : lastrt.Width;
-                            }
-
-                            if (passInfo.DoScale)
-                            {
-                                if (passInfo.Absolute)
-                                {
-                                    w = Convert.ToInt32(passInfo.ScaleVector.X);
-                                    h = Convert.ToInt32(passInfo.ScaleVector.Y);
-                                }
-                                else
-                                {
-                                    w = Convert.ToInt32((float)w * passInfo.ScaleVector.X);
-                                    h = Convert.ToInt32((float)h * passInfo.ScaleVector.Y);
-                                }
-
-                                w = Math.Max(w, 1);
-                                h = Math.Max(h, 1);
-                            }
-
-                            //Check format support for render target, and default to rgb8 if not
-                            if (!context.IsSupported(FormatSupport.RenderTarget, fmt))
-                            {
-                                fmt = Format.R8G8B8A8_UNorm;
-                            }
-
-                            //To avoid uav issue
-                            if (fmt == Format.B8G8R8A8_UNorm) { fmt = Format.R8G8B8A8_UNorm; }
-
-                            DX11ResourcePoolEntry<DX11RenderTarget2D> elem;
-                            if (preservedtarget != null)
-                            {
-                                elem = preservedtarget;
-                            }
-                            else
-                            {
-                                elem = context.ResourcePool.LockRenderTarget(w, h, fmt, new SampleDescription(1, 0), mips, 0);
-                                locktargets.Add(elem);
-                            }
-                            DX11RenderTarget2D rt = elem.Element;
-
-
-                            if (this.FDepthIn.IsConnected && passInfo.UseDepth)
-                            {
-                                context.RenderTargetStack.Push(this.FDepthIn[0][context], true, elem.Element);
-                            }
-                            else
-                            {
-                                context.RenderTargetStack.Push(elem.Element);
-                            }
-
-                            if (passInfo.Clear)
-                            {
-                                elem.Element.Clear(new Color4(0, 0, 0, 0));
-                            }
-
-                            #region Check for depth/blend preset
-                            bool validdepth = false;
-                            bool validblend = false;
-
-                            DepthStencilStateDescription ds = new DepthStencilStateDescription();
-                            BlendStateDescription bs = new BlendStateDescription();
-
-                            if (passInfo.DepthPreset != "")
-                            {
-                                try
-                                {
-                                    ds = DX11DepthStencilStates.GetState(passInfo.DepthPreset);
-                                    validdepth = true;
-                                }
-                                catch
-                                {
-
-                                }
-                            }
-
-                            if (passInfo.BlendPreset != "")
-                            {
-                                try
-                                {
-                                    bs = DX11BlendStates.GetState(passInfo.BlendPreset);
-                                    validblend = true;
-                                }
-                                catch
-                                {
-
-                                }
-                            }
-                            #endregion
-
-                            if (validdepth || validblend)
-                            {
-                                DX11RenderState state = new DX11RenderState();
-                                if (validdepth) { state.DepthStencil = ds; }
-                                if (validblend) { state.Blend = bs; }
-                                context.RenderStateStack.Push(state);
-                            }
-
-                            r.RenderWidth = w;
-                            r.RenderHeight = h;
-                            r.BackBuffer = elem.Element;
-
-                            //Apply settings (we do both here, as texture size semantic might ahve 
-                            variableCache.ApplyGlobals(r);
-                            variableCache.ApplySlice(or, textureIndex);
-                            //Bind last render target
-
-                            shaderInfo.ApplyPrevious(lastrt.SRV);
-
-                            this.BindPassIndexSemantic(shaderdata.ShaderInstance.Effect, passIndex);
-                            this.BindPassIterIndexSemantic(shaderdata.ShaderInstance.Effect, kiter);
-
-                            if (this.FDepthIn.IsConnected)
-                            {
-                                if (this.FDepthIn[0].Contains(context))
-                                {
-                                    shaderInfo.ApplyDepth(this.FDepthIn[0][context].SRV);
-                                }
-                            }
-
-                            //Apply pass and draw quad
-                            passInfo.Apply(ctx);
-
-                            if (passInfo.ComputeData.Enabled)
-                            {
-                                passInfo.ComputeData.Dispatch(context, w, h);
-                                context.CleanUpCS();
-                            }
-                            else
-                            {
-                                ctx.ComputeShader.Set(null);
-                                context.Primitives.FullScreenTriangle.Draw();
-                                ctx.OutputMerger.SetTargets(this.nullrtvs);
-                            }
-
-                            //Generate mips if applicable
-                            if (mips) { ctx.GenerateMips(rt.SRV); }
-
-                            if (!passInfo.KeepTarget)
-                            {
-                                rtlist.Add(rt);
-                                lastrt = rt;
-                                lasttmp = elem;
-                                preservedtarget = null;
-                                passcounter++;
-                            }
-                            else
-                            {
-                                preservedtarget = elem;
-                            }
-
-
-                            context.RenderTargetStack.Pop();
-
-                            //Apply pass result semantic if applicable (after pop)
-                            shaderInfo.ApplyPassResult(lasttmp.Element.SRV, passIndex);
-
-                            if (validblend || validdepth)
-                            {
-                                context.RenderStateStack.Pop();
-                            }
-
-                            if (passInfo.HasState)
-                            {
-                                context.RenderStateStack.Apply();
-                            }
-
-                            
-
+                            fmt = passInfo.Format;
                         }
+                        bool mips = passInfo.Mips || (isLastPass && FInMipLastPass[textureIndex]);
+
+                        int w, h;
+                        if (passIndex == 0)
+                        {
+                            h = he;
+                            w = wi;
+                        }
+                        else
+                        {
+                            h = passInfo.Reference == ImageShaderPassInfo.eImageScaleReference.Initial ? he : lastrt.Height;
+                            w = passInfo.Reference == ImageShaderPassInfo.eImageScaleReference.Initial ? wi : lastrt.Width;
+                        }
+
+                        if (passInfo.DoScale)
+                        {
+                            if (passInfo.Absolute)
+                            {
+                                w = Convert.ToInt32(passInfo.ScaleVector.X);
+                                h = Convert.ToInt32(passInfo.ScaleVector.Y);
+                            }
+                            else
+                            {
+                                w = Convert.ToInt32((float)w * passInfo.ScaleVector.X);
+                                h = Convert.ToInt32((float)h * passInfo.ScaleVector.Y);
+                            }
+
+                            w = Math.Max(w, 1);
+                            h = Math.Max(h, 1);
+                        }
+
+                        //Check format support for render target, and default to rgb8 if not
+                        if (!context.IsSupported(FormatSupport.RenderTarget, fmt))
+                        {
+                            fmt = Format.R8G8B8A8_UNorm;
+                        }
+
+                        //To avoid uav issue
+                        if (fmt == Format.B8G8R8A8_UNorm) { fmt = Format.R8G8B8A8_UNorm; }
+
+                        DX11ResourcePoolEntry<DX11RenderTarget2D> elem;
+                        if (preservedtarget != null)
+                        {
+                            elem = preservedtarget;
+                        }
+                        else
+                        {
+                            elem = context.ResourcePool.LockRenderTarget(w, h, fmt, new SampleDescription(1, 0), mips, 0);
+                            locktargets.Add(elem);
+                        }
+                        DX11RenderTarget2D rt = elem.Element;
+
+
+                        if (this.FDepthIn.IsConnected && passInfo.UseDepth)
+                        {
+                            context.RenderTargetStack.Push(this.FDepthIn[0][context], true, elem.Element);
+                        }
+                        else
+                        {
+                            context.RenderTargetStack.Push(elem.Element);
+                        }
+
+                        if (passInfo.Clear)
+                        {
+                            elem.Element.Clear(new Color4(0, 0, 0, 0));
+                        }
+
+                        #region Check for depth/blend preset
+                        bool validdepth = false;
+                        bool validblend = false;
+
+                        DepthStencilStateDescription ds = new DepthStencilStateDescription();
+                        BlendStateDescription bs = new BlendStateDescription();
+
+                        if (passInfo.DepthPreset != "")
+                        {
+                            try
+                            {
+                                ds = DX11DepthStencilStates.GetState(passInfo.DepthPreset);
+                                validdepth = true;
+                            }
+                            catch
+                            {
+
+                            }
+                        }
+
+                        if (passInfo.BlendPreset != "")
+                        {
+                            try
+                            {
+                                bs = DX11BlendStates.GetState(passInfo.BlendPreset);
+                                validblend = true;
+                            }
+                            catch
+                            {
+
+                            }
+                        }
+                        #endregion
+
+                        if (validdepth || validblend)
+                        {
+                            DX11RenderState state = new DX11RenderState();
+                            if (validdepth) { state.DepthStencil = ds; }
+                            if (validblend) { state.Blend = bs; }
+                            context.RenderStateStack.Push(state);
+                        }
+
+                        renderSettings.RenderWidth = w;
+                        renderSettings.RenderHeight = h;
+                        renderSettings.BackBuffer = elem.Element;
+
+                        //Apply settings (we do both here, as texture size semantic might ahve 
+                        variableCache.ApplyGlobals(renderSettings);
+                        variableCache.ApplySlice(objectSettings, textureIndex);
+                        //Bind last render target
+
+                        shaderInfo.ApplyPrevious(lastrt.SRV);
+
+                        this.BindPassIndexSemantic(shaderdata.ShaderInstance.Effect, passIndex);
+
+                        if (this.FDepthIn.IsConnected)
+                        {
+                            if (this.FDepthIn[0].Contains(context))
+                            {
+                                shaderInfo.ApplyDepth(this.FDepthIn[0][context].SRV);
+                            }
+                        }
+
+                        for (int list = 0; list < this.FinPrePostActions.SliceCount; list++)
+                        {
+                            if (this.FinPrePostActions[list] != null)
+                            {
+                                this.FinPrePostActions[list].OnBeginPass(context, passIndex);
+                            }
+                        }
+
+                        //Apply pass and draw quad
+                        passInfo.Apply(ctx);
+
+                        if (passInfo.ComputeData.Enabled)
+                        {
+                            passInfo.ComputeData.Dispatch(context, w, h);
+                            context.CleanUpCS();
+                        }
+                        else
+                        {
+                            ctx.ComputeShader.Set(null);
+                            context.Primitives.FullScreenTriangle.Draw();
+                            ctx.OutputMerger.SetTargets(this.nullrtvs);
+                        }
+
+                        //Generate mips if applicable
+                        if (mips) { ctx.GenerateMips(rt.SRV); }
+
+                        if (!passInfo.KeepTarget)
+                        {
+                            rtlist.Add(rt);
+                            lastrt = rt;
+                            lasttmp = elem;
+                            preservedtarget = null;
+                            passcounter++;
+                        }
+                        else
+                        {
+                            preservedtarget = elem;
+                        }
+
+
+                        context.RenderTargetStack.Pop();
+
+                        //Apply pass result semantic if applicable (after pop)
+                        shaderInfo.ApplyPassResult(lasttmp.Element.SRV, passIndex);
+
+                        if (validblend || validdepth)
+                        {
+                            context.RenderStateStack.Pop();
+                        }
+
+                        if (passInfo.HasState)
+                        {
+                            context.RenderStateStack.Apply();
+                        }
+
+                        for (int list = 0; list < this.FinPrePostActions.SliceCount; list++)
+                        {
+                            if (this.FinPrePostActions[list] != null)
+                            {
+                                this.FinPrePostActions[list].OnEndPass(context, passIndex);
+                            }
+                        }
+
                     }
 
                     //Set last render target
@@ -595,15 +615,6 @@ namespace VVVV.DX11.Nodes.Layers
                 effect.GetVariableByName(erv.Description.Name).AsScalar().Set(passindex);
             }
         }
-
-        private void BindPassIterIndexSemantic(Effect effect, int passiterindex)
-        {
-            foreach (EffectScalarVariable erv in this.varmanager.passiterindex)
-            {
-                effect.GetVariableByName(erv.Description.Name).AsScalar().Set(passiterindex);
-            }
-        }
-
         #endregion
 
         #region Destroy

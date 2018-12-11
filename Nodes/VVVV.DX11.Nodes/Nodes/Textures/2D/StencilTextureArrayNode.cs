@@ -10,20 +10,20 @@ using System.ComponentModel.Composition;
 
 namespace VVVV.DX11.Nodes
 {
-    [PluginInfo(Name = "StencilView", Category = "DX11.Texture", Version = "2d",
+    [PluginInfo(Name = "StencilArrayView", Category = "DX11.Texture", Version = "2d",
         AutoEvaluate = true,
         Author = "vux",
         Warnings = "")]
-    public class StencilTextureNode : IPluginEvaluate, IDX11ResourceHost
+    public class StencilTextureArrayNode : IPluginEvaluate, IDX11ResourceHost
     {
         [Input("Depth Stencil In")]
-        protected Pin<DX11Resource<DX11DepthStencil>> FTextureInput;
+        protected Pin<DX11Resource<DX11DepthTextureArray>> FTextureInput;
 
         [Output("Texture Out")]
         protected Pin<DX11Resource<DX11Texture2D>> FTextureOutput;
 
         [ImportingConstructor()]
-        public StencilTextureNode(IHDEHost hde)
+        public StencilTextureArrayNode(IHDEHost hde)
         {
 
         }
