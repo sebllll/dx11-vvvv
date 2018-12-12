@@ -49,34 +49,35 @@ namespace VVVV.DX11.Nodes
     [PluginInfo(Name = "S+H", Category = "DX11.DepthStencil", Version = "2d", Author = "vux", Help = "Sample and Hold - if set is 1 just passes the input through(makes a copy of it), when set is 0 keeps the copy instead(and block upwards evaluation and rendering")]
     public class SampleHoldDepthStencilNode : SampleHoldResourceNode<DX11DepthStencil>
     {
-        //private Texture2DDescription currentDescription;
+        private Texture2DDescription currentDescription;
 
         protected override void ProcessResource(DX11RenderContext context, DX11DepthStencil inputResource, ref DX11DepthStencil outputResource)
         {
             if (outputResource != null)
             {
                 //currentDescription = inputResource.Description;
-                if (outputResource.Description != outputResource.Description)
+                if (currentDescription != inputResource.Description)
                 {
                     outputResource.Dispose();
                     outputResource = null;
                 }
-
             }
 
-            if (outputResource == null)
+            if (outputResource == null || apply[0])
             {
-                //this.currentDescription = inputResource.Description;
+                this.currentDescription = inputResource.Description;
 
                 /*make default pool, disallow cpu access and only allow shader view flag (as we will not write to it) */
-                //Texture2DDescription desc = this.currentDescription;
-                //desc.Usage = ResourceUsage.Default;
-                //desc.BindFlags = BindFlags.ShaderResource;
-                //desc.CpuAccessFlags = CpuAccessFlags.None;
+                Texture2DDescription desc = this.currentDescription;
+                desc.Usage = ResourceUsage.Default;
+                desc.BindFlags = BindFlags.ShaderResource;
+                desc.CpuAccessFlags = CpuAccessFlags.None;
 
-                outputResource = DX11DepthStencil.FromTextureAndSRVStencil(context, inputResource, inputResource.SRV, Format.R24G8_Typeless);
+                // works:
+                //outputResource = DX11DepthStencil.FromDescription(context, desc, Format.D24_UNorm_S8_UInt);
 
-                //outputResource = DX11DepthStencil.FromDescription(context, desc);
+                // works without adding method to DX11DepthStencil
+                outputResource = new DX11DepthStencil(context, desc.Width, desc.Height, desc.SampleDescription, Format.D24_UNorm_S8_UInt);
             }
             context.CurrentDeviceContext.CopyResource(inputResource.Resource, outputResource.Resource);
         }
